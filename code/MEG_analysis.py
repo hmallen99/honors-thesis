@@ -2,9 +2,8 @@ import os
 import numpy as np
 import mne
 import re
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
-%matplotlib qt
 
 ch_exclude = ['MEG0834','MEG0835','MEG0836','MEG0844','MEG0845','MEG0846','MEG2914','MEG2915','MEG2916','MEG2924','MEG2925',
 'MEG2926','MEG2934','MEG2935','MEG2936','MEG2944','MEG2945','MEG2946','MEG3014','MEG3015','MEG3016','MEG3024','MEG3025',
@@ -13,6 +12,7 @@ ch_exclude = ['MEG0834','MEG0835','MEG0836','MEG0844','MEG0845','MEG0846','MEG29
 'MEG3226','MEG3234','MEG3235','MEG3236','MEG3244','MEG3245','MEG3246']
 
 def apply_ica(raw):
+    print("Executing ICA")
     ica = mne.preprocessing.ICA(n_components=20, random_state=5, max_iter=800)
     ica.fit(raw)
 
@@ -25,6 +25,7 @@ def apply_ica(raw):
     return ica_raw
 
 def epoch_data(data):
+    print("Epoching Data")
     #print(raw.ch_names)
     chan_idxs = [data.ch_names.index(ch) for ch in data.ch_names]
     events = mne.find_events(data)
@@ -32,14 +33,14 @@ def epoch_data(data):
     #epochs.plot_image(picks = ['MEG2312'])
     return epochs
 
-def plot_evoked(epochs):
+def plot_evoked(epochs, participant):
+    print("Plotting Evoked")
     evoked = epochs["16384"].average()
-    evoked.pick_types('grad').plot_topo(color='r')
+    evoked.pick_types('grad').plot_topo(color='r').savefig("%i.pdf" % participant)
     # save figure here
 
-def process_data(filename):
-    data_path = folder_dict[filename]
-    raws = [mne.io.read_raw_fif(raw_file) for raw_file in data_path]
+def process_data(data, participant):
+    raws = [mne.io.read_raw_fif(raw_file) for raw_file in data]
     raw = mne.io.concatenate_raws(raws)
 
     original = raw.copy()
@@ -48,7 +49,7 @@ def process_data(filename):
 
     ica_raw = apply_ica(raw)
     epochs = epoch_data(ica_raw)
-    plot_evoked(epochs)
+    plot_evoked(epochs, participant)
 
 
 def main():
@@ -60,8 +61,11 @@ def main():
         entries = os.listdir(folder)
         folder_dict[folder] = [os.path.join(folder, entry) for entry in entries if re.findall(r"^\w+SD_\w*raw.fif", entry)]
 
-    for file in folder_dict.keys():
-        process_data(file)
+    i = 0
+    for filename in folder_dict.keys():
+        print("Processing file %s" % filename)
+        process_data(folder_dict[filename], i)
+        i += 1
 
 if __name__ == "__main__":
     main()
