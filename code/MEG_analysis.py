@@ -18,7 +18,7 @@ def apply_ica(raw):
 
     ica.exclude = [0, 1]
     #ica.plot_properties(raw, picks = ica.exclude)
-    #ica.plot_components()
+    ica.plot_components(show=False).savefig("ica_%.pdf" % participant)
 
     raw.load_data()
     ica_raw = ica.apply(raw)
@@ -36,8 +36,9 @@ def epoch_data(data):
 def plot_evoked(epochs, participant):
     print("Plotting Evoked")
     evoked = epochs["16384"].average()
-    evoked.pick_types('grad').plot_topo(color='r').savefig("%i.pdf" % participant)
-    # save figure here
+    evoked.pick_types('grad').plot_topo(color='r', show=False).savefig("erf_map_%i.pdf" % participant)
+    evoked.plot(picks=["MEG1923"], show=False).savefig("left_occipital_%i.pdf" % participant)
+    evoked.plot(picks=["MEG2332"], show=False).savefig("right_occipital_%i.pdf" % participant)
 
 def process_data(data, participant):
     raws = [mne.io.read_raw_fif(raw_file) for raw_file in data]
