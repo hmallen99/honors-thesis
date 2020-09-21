@@ -11,14 +11,39 @@ ch_exclude = ['MEG0834','MEG0835','MEG0836','MEG0844','MEG0845','MEG0846','MEG29
 'MEG3126','MEG3134','MEG3135','MEG3136','MEG3144','MEG3145','MEG3146','MEG3214','MEG3215','MEG3216','MEG3224','MEG3225',
 'MEG3226','MEG3234','MEG3235','MEG3236','MEG3244','MEG3245','MEG3246']
 
-def apply_ica(raw):
+ica_exclude_picks = [
+    [0, 4],
+    [0, 4],
+    [0, 1],
+    [0, 9, 19],
+    [0, 1],
+    [0, 8],
+    [0, 9],
+    [0, 1, 2],
+    [0],
+    [0, 1],
+    [3],
+    [1, 7],
+    [0, 1, 4],
+    [3, 9],
+    [0, 1, 2, 4],
+    [0, 13],
+    [0],
+    [0, 7],
+    [0, 15],
+    [0, 3],
+    [0]
+]
+
+def apply_ica(raw, participant):
     print("Executing ICA")
     ica = mne.preprocessing.ICA(n_components=20, random_state=5, max_iter=800)
     ica.fit(raw)
 
-    ica.exclude = [0, 1]
+    #ica.exclude = [0, 1]
+    ica.exclude = ica_exclude_picks[participant]
     #ica.plot_properties(raw, picks = ica.exclude)
-    ica.plot_components(show=False).savefig("ica_%.pdf" % participant)
+    #ica.plot_components(show=False)
 
     raw.load_data()
     ica_raw = ica.apply(raw)
@@ -48,7 +73,7 @@ def process_data(data, participant):
     raw.load_data().filter(l_freq=2, h_freq=40)
     raw.pick_types(meg="grad", stim=True, exclude = ch_exclude)
 
-    ica_raw = apply_ica(raw)
+    ica_raw = apply_ica(raw, participant)
     epochs = epoch_data(ica_raw)
     plot_evoked(epochs, participant)
 
