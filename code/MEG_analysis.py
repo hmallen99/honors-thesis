@@ -78,7 +78,7 @@ def process_data(data, participant):
     ica_raw = apply_ica(raw, participant)
     epochs = epoch_data(ica_raw)
     evoked = plot_evoked(epochs, participant)
-    return ica_raw
+    return epochs
 
 
 def main():
@@ -91,15 +91,14 @@ def main():
         folder_dict[folder] = [os.path.join(folder, entry) for entry in entries if re.findall(r"^\w+SD_\w*raw.fif", entry)]
 
     i = 0
-    ica_raws = []
+    epochs = []
     for filename in folder_dict.keys():
         print("Processing file %s" % filename)
-        ica_raw = process_data(folder_dict[filename], i)
-        ica_raws.append(ica_raw)
+        epoch = process_data(folder_dict[filename], i)
+        epochs.append(epoch)
         i += 1
 
-    all_ica_raw = mne.io.concatenate_raws(ica_raws)
-    all_epochs = epoch_data(all_ica_raw)
+    all_epochs = mne.concatenate_epochs(epochs)
     plot_evoked(all_epochs, 1000)
 
 if __name__ == "__main__":
