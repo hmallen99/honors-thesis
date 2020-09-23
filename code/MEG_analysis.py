@@ -61,9 +61,11 @@ def epoch_data(data):
 def plot_evoked(epochs, participant):
     print("Plotting Evoked")
     evoked = epochs["16384"].average()
-    evoked.pick_types('grad').plot_topo(color='r', show=False).savefig("erf_map_%i.pdf" % participant)
-    evoked.plot(picks=["MEG1923"], show=False).savefig("left_occipital_%i.pdf" % participant)
-    evoked.plot(picks=["MEG2332"], show=False).savefig("right_occipital_%i.pdf" % participant)
+    title = "Participant %i" % participant
+    evoked.pick_types('grad').plot_topo(color='r', title=title, show=False).savefig("erf_map_%i.pdf" % participant)
+    evoked.plot(picks=["MEG1923"], window_title=title, show=False).savefig("left_occipital_%i.pdf" % participant)
+    evoked.plot(picks=["MEG2332"], window_title=title, show=False).savefig("right_occipital_%i.pdf" % participant)
+    return evoked
 
 def process_data(data, participant):
     raws = [mne.io.read_raw_fif(raw_file) for raw_file in data]
@@ -75,7 +77,8 @@ def process_data(data, participant):
 
     ica_raw = apply_ica(raw, participant)
     epochs = epoch_data(ica_raw)
-    plot_evoked(epochs, participant)
+    evoked = plot_evoked(epochs, participant)
+    return ica_raw
 
 
 def main():
@@ -88,10 +91,16 @@ def main():
         folder_dict[folder] = [os.path.join(folder, entry) for entry in entries if re.findall(r"^\w+SD_\w*raw.fif", entry)]
 
     i = 0
+    ica_raws = []
     for filename in folder_dict.keys():
         print("Processing file %s" % filename)
-        process_data(folder_dict[filename], i)
+        ica_raw = process_data(folder_dict[filename], i)
+        ica_raws.append(ica_raw)
         i += 1
+
+    all_ica_raw = mne.io.concatenate_raws(ica_raws)
+    all_epochs = epoch_data(all_ica_raw)
+    plot_evoked(all_epochs, 1000)
 
 if __name__ == "__main__":
     main()
