@@ -46,7 +46,7 @@ def apply_ica(raw, participant):
     #ica.plot_components(show=False)
 
     raw.load_data()
-    ica_raw = ica.apply(raw)
+    ica.apply(raw)
     return ica_raw
 
 def epoch_data(data):
@@ -78,7 +78,7 @@ def process_data(data, participant):
     ica_raw = apply_ica(raw, participant)
     epochs = epoch_data(ica_raw)
     evoked = plot_evoked(epochs, participant)
-    return epochs
+    return evoked
 
 
 def main():
@@ -91,15 +91,15 @@ def main():
         folder_dict[folder] = [os.path.join(folder, entry) for entry in entries if re.findall(r"^\w+SD_\w*raw.fif", entry)]
 
     i = 0
-    epochs = []
+    evoked_list = []
     for filename in folder_dict.keys():
         print("Processing file %s" % filename)
-        epoch = process_data(folder_dict[filename], i)
-        epochs.append(epoch)
+        evoked = process_data(folder_dict[filename], i)
+        evoked_list.append(evoked)
         i += 1
 
-    all_epochs = mne.concatenate_epochs(epochs)
-    plot_evoked(all_epochs, 1000)
+    all_evoked = mne.combine_evoked(evoked_list, 'equal')
+    plot_evoked(all_evoked, 1000)
 
 if __name__ == "__main__":
     main()
