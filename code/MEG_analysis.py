@@ -46,15 +46,18 @@ def apply_ica(raw, participant):
     #ica.plot_components(show=False)
 
     raw.load_data()
-    ica.apply(raw)
+    ica_raw = ica.apply(raw)
     return ica_raw
 
-def epoch_data(data):
+def epoch_data(data, participant=-1):
     print("Epoching Data")
     #print(raw.ch_names)
     chan_idxs = [data.ch_names.index(ch) for ch in data.ch_names]
+    reject = dict(grad=4000e-13)
     events = mne.find_events(data)
-    epochs = mne.Epochs(data, events, event_id=16384, tmin=-0.5, tmax = 1)
+    epochs = mne.Epochs(data, events, event_id=16384, tmin=-0.5, tmax = 1, reject = reject)
+    epochs.drop_bad()
+    epochs.plot_drop_log(show=False).savefig("bad_epochs_%i" % participant)
     #epochs.plot_image(picks = ['MEG2312'])
     return epochs
 
@@ -62,9 +65,9 @@ def plot_evoked(epochs, participant):
     print("Plotting Evoked")
     evoked = epochs["16384"].average()
     title = "Participant %i" % participant
-    evoked.pick_types('grad').plot_topo(color='r', title=title, show=False).savefig("erf_map_%i.pdf" % participant)
-    evoked.plot(picks=["MEG1923"], window_title=title, show=False).savefig("left_occipital_%i.pdf" % participant)
-    evoked.plot(picks=["MEG2332"], window_title=title, show=False).savefig("right_occipital_%i.pdf" % participant)
+    #evoked.pick_types('grad').plot_topo(color='r', title=title, show=False).savefig("erf_map_%i.pdf" % participant)
+    #evoked.plot(picks=["MEG1923"], window_title=title, show=False).savefig("left_occipital_%i.pdf" % participant)
+    #evoked.plot(picks=["MEG2332"], window_title=title, show=False).savefig("right_occipital_%i.pdf" % participant)
     return evoked
 
 def process_data(data, participant):
@@ -76,7 +79,7 @@ def process_data(data, participant):
     raw.pick_types(meg="grad", stim=True, exclude = ch_exclude)
 
     ica_raw = apply_ica(raw, participant)
-    epochs = epoch_data(ica_raw)
+    epochs = epoch_data(ica_raw, participant)
     evoked = plot_evoked(epochs, participant)
     return evoked
 
@@ -99,7 +102,9 @@ def main():
         i += 1
 
     all_evoked = mne.combine_evoked(evoked_list, 'equal')
-    plot_evoked(all_evoked, 1000)
+    all_evoked.pick_types('grad').plot_topo(color='r', title="erf_average_topo", show=False).savefig("erf_map_average.pdf")
+    all_evoked.plot(picks=["MEG1923"], window_title="left_occipital_average", show=False).savefig("left_occipital_average.pdf")
+    all_evoked.plot(picks=["MEG2332"], window_title="right_occipital_average", show=False).savefig("right_occipital_average.pdf")
 
 if __name__ == "__main__":
     main()
