@@ -76,7 +76,7 @@ def process_data(data, participant):
     ica_raw = apply_ica(raw, participant)
     epochs = epoch_data(ica_raw, participant)
     evoked = plot_evoked(epochs, participant)
-    return evoked
+    return evoked, epochs
 
 
 def main():
@@ -92,7 +92,7 @@ def main():
     evoked_list = []
     for filename in folder_dict.keys():
         print("Processing file %s" % filename)
-        evoked = process_data(folder_dict[filename], i)
+        evoked, ep = process_data(folder_dict[filename], i)
         evoked.interpolate_bads(reset_bads=False)
         evoked_list.append(evoked)
         i += 1
