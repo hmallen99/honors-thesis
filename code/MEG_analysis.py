@@ -39,39 +39,34 @@ def apply_ica(raw, participant):
     print("Executing ICA")
     ica = mne.preprocessing.ICA(n_components=20, random_state=5, max_iter=800)
     ica.fit(raw)
-
-    #ica.exclude = [0, 1]
     ica.exclude = ica_exclude_picks[participant]
-    #ica.plot_properties(raw, picks = ica.exclude)
-    #ica.plot_components(show=False)
-
     raw.load_data()
     ica_raw = ica.apply(raw)
     return ica_raw
 
-def epoch_data(data, participant=-1):
+def epoch_data(data, participant=-1, plot=False):
     print("Epoching Data")
-    #print(raw.ch_names)
     chan_idxs = [data.ch_names.index(ch) for ch in data.ch_names]
     reject = dict(grad=4000e-13)
     events = mne.find_events(data)
     epochs = mne.Epochs(data, events, event_id=16384, tmin=-0.5, tmax = 1, reject = reject)
     epochs.drop_bad()
-    epochs.plot_drop_log(show=False).savefig("bad_epochs_%i" % participant)
-    #epochs.plot_image(picks = ['MEG2312'])
+    if plot:
+        epochs.plot_drop_log(show=False).savefig("../figures/bad_epochs/bad_epochs_%i" % participant)
     return epochs
 
-def plot_evoked(epochs, participant):
+def plot_evoked(epochs, participant, plot=False):
     print("Plotting Evoked")
     evoked = epochs["16384"].average()
     title = "Participant %i" % participant
-    #evoked.pick_types('grad').plot_topo(color='r', title=title, show=False).savefig("erf_map_%i.pdf" % participant)
-    #evoked.plot(picks=["MEG1923"], window_title=title, show=False).savefig("left_occipital_%i.pdf" % participant)
-    #evoked.plot(picks=["MEG2332"], window_title=title, show=False).savefig("right_occipital_%i.pdf" % participant)
+    if plot:
+        evoked.pick_types('grad').plot_topo(color='r', title=title, show=False).savefig("../figures/topomap/erf_map_%i.pdf" % participant)
+        evoked.plot(picks=["MEG1923"], window_title=title, show=False).savefig("../figures/left_occipital/left_occipital_%i.pdf" % participant)
+        evoked.plot(picks=["MEG2332"], window_title=title, show=False).savefig("../figures/right_occipital/right_occipital_%i.pdf" % participant)
     return evoked
 
 def process_data(data, participant):
-    raws = [mne.io.read_raw_fif(raw_file) for raw_file in data]
+    raws = [mne.io.read_raw_fif(raw_file, verbose=False) for raw_file in data]
     raw = mne.io.concatenate_raws(raws)
 
     original = raw.copy()
@@ -98,6 +93,7 @@ def main():
     for filename in folder_dict.keys():
         print("Processing file %s" % filename)
         evoked = process_data(folder_dict[filename], i)
+        evoked.interpolate_bads(reset_bads=False)
         evoked_list.append(evoked)
         i += 1
 
