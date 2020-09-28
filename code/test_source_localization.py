@@ -17,6 +17,8 @@ def main():
 
     print("reading in data")
     evoked, epochs = meg.process_data(folder_dict['../../../../MEG_raw01/170131_fujita_SD'], 0)
+    evoked.save('../Data/Evoked/MF-ave.fif')
+    epochs.save('../Data/Epochs/MF-epo.fif')
     print("computing covariance")
     cov = mne.compute_covariance(epochs, tmax=0., method=['shrunk', 'empirical'], rank=None, verbose=True)
 
