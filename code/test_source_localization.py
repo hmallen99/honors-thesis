@@ -1,4 +1,5 @@
 import mne
+import re
 import os
 import numpy as np
 import source_localization as srcl
@@ -14,16 +15,28 @@ def main():
         entries = os.listdir(folder)
         folder_dict[folder] = [os.path.join(folder, entry) for entry in entries if re.findall(r"^\w+SD_\w*raw.fif", entry)]
 
+    print("reading in data")
     evoked, epochs = meg.process_data(folder_dict['../../../../MEG_raw01/170131_fujita_SD'], 0)
+    print("computing covariance")
     cov = mne.compute_covariance(epochs, tmax=0., method=['shrunk', 'empirical'], rank=None, verbose=True)
 
+    print("Starting source localization")
     subj = 'MF'
     source_localization_dir = "/usr/local/freesurfer/subjects"
-    src = srcl.create_source_space(subj, source_localization_dir)
-    bem = srcl.make_bem(subj, source_localization_dir)
+    print("creating source space")
+    #src = srcl.create_source_space(subj, source_localization_dir, save=True)
+    src = srcl.get_source_space("../Data/SourceSpaces/MF-src.fif")
+    print("Bem")
+    #bem = srcl.make_bem(subj, source_localization_dir, save=True)
+    bem = srcl.read_bem("../Data/BEM/MF-bem-sol.fif")
+    print("forward solution")
     fwd = srcl.make_forward_sol(evoked, src, bem)
+    print("inv_op")
     inv_op = srcl.make_inverse_operator(evoked, fwd, cov)
+    print("source estimate")
     stc, residual = srcl.apply_inverse(evoked, inv_op)
+    residual.plot_topo()
+    srcl.plot_source(stc)
 
 
     return 0
