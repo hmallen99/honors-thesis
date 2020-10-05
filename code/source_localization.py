@@ -40,53 +40,26 @@ def apply_inverse(evoked, inverse_op):
     stc, residual = mne.minimum_norm.apply_inverse(evoked, inverse_op, method="dSPM", pick_ori=None, return_residual=True, verbose=True)
     return stc, residual
 
-def plot_source(stc):
+def plot_source(stc, subject="sub", initial_time="time_max", views="dorsal", hemi="both"):
     vertno_max, time_max = stc.get_peak(hemi='lh')
+    if initial_time == "time_max":
+        initial_time = time_max
 
     subjects_dir = '/usr/local/freesurfer/subjects'
     surfer_kwargs = dict(
-        hemi='lh', subjects_dir=subjects_dir,
-        clim=dict(kind='value', lims=[0, 10, 20]), views='lateral',
-        initial_time=time_max, time_unit='s', size=(800, 800), smoothing_steps=5)
+        hemi=hemi, subjects_dir=subjects_dir,
+        clim=dict(kind='value', lims=[0, 10, 20]), views=views,
+        initial_time=initial_time, time_unit='s', size=(800, 800), smoothing_steps=5)
     brain = stc.plot(**surfer_kwargs)
-    brain.add_foci(vertno_max, coords_as_verts=True, hemi='lh', color='blue',
-                scale_factor=0.6, alpha=0.5)
+    if (hemi == "both"):
+        brain.add_foci(vertno_max, coords_as_verts=True, hemi="lh", color='blue',
+                    scale_factor=0.6, alpha=0.5)
+    else:
+        brain.add_foci(vertno_max, coords_as_verts=True, hemi=hemi, color='blue',
+                    scale_factor=0.6, alpha=0.5)
     brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
                 font_size=14)
-    mlab.savefig("../Figures/MF_brain_lh.png")
-
-    surfer_kwargs = dict(
-        hemi='rh', subjects_dir=subjects_dir,
-        clim=dict(kind='value', lims=[0, 10, 20]), views='lateral',
-        initial_time=time_max, time_unit='s', size=(800, 800), smoothing_steps=5)
-    brain = stc.plot(**surfer_kwargs)
-    brain.add_foci(vertno_max, coords_as_verts=True, hemi='rh', color='blue',
-                scale_factor=0.6, alpha=0.5)
-    brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
-                font_size=14)
-    mlab.savefig("../Figures/MF_brain_rh.png")
-
-
-    surfer_kwargs = dict(
-        hemi='both', subjects_dir=subjects_dir,
-        clim=dict(kind='value', lims=[0, 10, 20]), views='dorsal',
-        initial_time=time_max, time_unit='s', size=(800, 800), smoothing_steps=5)
-    brain = stc.plot(**surfer_kwargs)
-    brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
-                font_size=14)
-    mlab.savefig("../Figures/MF_brain_top.png")
-
-    surfer_kwargs = dict(
-        hemi='both', subjects_dir=subjects_dir,
-        clim=dict(kind='value', lims=[0, 5, 10]), views='caudal',
-        initial_time=time_max, time_unit='s', size=(800, 800), smoothing_steps=5)
-    brain = stc.plot(**surfer_kwargs)
-    brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
-                font_size=14)
-    mlab.savefig("../Figures/MF_brain_back.png")
-
-
-    #mlab.plot3d([0],[0],[0])
+    mlab.savefig("../Figures/MRI/%s_%s%s_t%.1f.png" % (subject, views, hemi, initial_time))
 
 
 
