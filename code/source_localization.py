@@ -59,7 +59,7 @@ def plot_source(stc, subject="sub", initial_time="time_max", views="dorsal", hem
                     scale_factor=0.6, alpha=0.5)
     brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
                 font_size=14)
-    mlab.savefig("../Figures/MRI/%s_%s%s_t%.1f.png" % (subject, views, hemi, initial_time))
+    mlab.savefig("../Figures/MRI/%s_%s%s_t%.2f.png" % (subject, views, hemi, initial_time))
 
 
 
