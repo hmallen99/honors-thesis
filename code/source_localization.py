@@ -31,7 +31,7 @@ def read_bem(fpath):
     return mne.read_bem_solution(fpath)
 
 def make_forward_sol(evoked, src, bem):
-    return mne.make_forward_solution(evoked.info, None, src, bem)
+    return mne.make_forward_solution(evoked.info, 'fsaverage', src, bem)
 
 def make_inverse_operator(evoked, forward_sol, cov):
     return mne.minimum_norm.make_inverse_operator(evoked.info, forward_sol, cov, loose=0.2, depth=0.8)
