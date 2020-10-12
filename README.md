@@ -30,12 +30,18 @@ https://mne.tools/stable/overview/cookbook.html
 ### Source Localization
 1. Generate Freesurfer surfaces
 
-2. Create a source space from the Freesurfer data
+2.  Run `mne.bem.make_watershed_bem()` on the subject to generate a head model
 
-3. Generate a BEM from the Freesurfer data
+2. Align the mri data with the meg data using `mne coreg`. This will create a new "subject" that you should use for further steps.
 
-4. Calculate the forward solution
+3. Run `mne.bem.make_watershed_bem()` on the newly aligned model
 
-5. Calculate the inverse operator
+4. Create a source space from the Freesurfer data
 
-6. Create the source estimate
+5. Generate a BEM from the Freesurfer data
+
+6. Calculate the forward solution
+
+7. Calculate the inverse operator
+
+8. Create the source estimate

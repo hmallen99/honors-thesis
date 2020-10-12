@@ -12,7 +12,7 @@ def create_source_space(name, fdir, save=False):
     """
     src = mne.setup_source_space(name, subjects_dir=fdir, spacing='oct6')
     if save:
-        src.save("../Data/SourceSpaces/%s-oct6-src.fif" % name)
+        src.save("../Data/SourceSpaces/%s-oct6-src.fif" % name, overwrite=True)
     return src
 
 def get_source_space(fpath):
@@ -30,8 +30,8 @@ def make_bem(name, fdir, save=False):
 def read_bem(fpath):
     return mne.read_bem_solution(fpath)
 
-def make_forward_sol(evoked, src, bem):
-    return mne.make_forward_solution(evoked.info, 'fsaverage', src, bem)
+def make_forward_sol(evoked, src, bem, trans='fsaverage'):
+    return mne.make_forward_solution(evoked.info, trans, src, bem)
 
 def make_inverse_operator(evoked, forward_sol, cov):
     return mne.minimum_norm.make_inverse_operator(evoked.info, forward_sol, cov, loose=0.2, depth=0.8)
@@ -59,7 +59,29 @@ def plot_source(stc, subject="sub", initial_time="time_max", views="dorsal", hem
                     scale_factor=0.6, alpha=0.5)
     brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
                 font_size=14)
-    mlab.savefig("../Figures/MRI/%s/%s_%s%s_t%.2f.png" % (subject, subject, views, hemi, initial_time))
+    brain.save_image("../Figures/MRI/%s/%s_%s%s_t%.2f.png" % (subject, subject, views, hemi, initial_time))
+
+def save_movie(stc, subject="sub", views="caudal"):
+    vertno_max, time_max = stc.get_peak(hemi='lh')
+
+    subjects_dir = '/usr/local/freesurfer/subjects'
+    surfer_kwargs = dict(
+        hemi="both", subjects_dir=subjects_dir,
+        clim=dict(kind='value', lims=[0, 10, 20]), views=views,
+        initial_time=time_max, time_unit='s', size=(800, 800), smoothing_steps=5)
+    brain = stc.plot(**surfer_kwargs)
+    brain.add_foci(vertno_max, coords_as_verts=True, hemi="lh", color='blue',
+                scale_factor=0.6, alpha=0.5)
+
+    brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
+                font_size=14)
+
+    brain.save_movie("../Figures/MRI/%s/%s_%s.gif" % (subject, subject, views), tmin=0.0, tmax=0.3, interpolation='linear',
+                time_dilation=20, framerate=24)
 
 
+def morph_to_fsaverage(stc, subject_from, subject_to='fsaverage'):
+    morph = mne.compute_source_morph(stc, subject_from, subject_to)
+    stc_fsaverage = morph.apply(stc)
+    return stc_fsaverage
 
