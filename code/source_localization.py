@@ -1,4 +1,5 @@
 import mne
+import os
 import mayavi
 
 from mayavi import mlab
@@ -84,4 +85,21 @@ def morph_to_fsaverage(stc, subject_from, subject_to='fsaverage'):
     morph = mne.compute_source_morph(stc, subject_from, subject_to)
     stc_fsaverage = morph.apply(stc)
     return stc_fsaverage
+
+def get_processed_mri_data(subj, source_localization_dir):
+    src_path = "../Data/SourceSpaces/%s-oct6-src.fif" % subj
+    bem_path = "../Data/BEM/%s-bem-sol.fif" % subj
+    src = []
+    bem = []
+    if os.path.isfile(src_path):
+        src = get_source_space(src_path)
+    else:
+        src = create_source_space(subj, source_localization_dir, save=True)
+
+    if os.path.isfile(bem_path):
+        bem = read_bem(bem_path)
+    else:
+        bem = make_bem(subj, source_localization_dir, save=True)
+
+    return src, bem
 

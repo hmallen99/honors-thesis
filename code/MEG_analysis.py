@@ -65,21 +65,21 @@ def plot_evoked(epochs, participant, plot=False):
         evoked.plot(picks=["MEG2332"], window_title=title, show=False).savefig("../figures/right_occipital/right_occipital_%i.pdf" % participant)
     return evoked
 
-def process_data(data, participant):
+def get_raw(data):
     raws = [mne.io.read_raw_fif(raw_file, verbose=False) for raw_file in data]
     raw = mne.io.concatenate_raws(raws)
-
-    original = raw.copy()
     raw.load_data().filter(l_freq=2, h_freq=40)
     raw.pick_types(meg="grad", stim=True, exclude = ch_exclude)
+    return raw
 
+def process_data(data, participant):
+    raw = get_raw(data)
     ica_raw = apply_ica(raw, participant)
     epochs = epoch_data(ica_raw, participant)
     evoked = plot_evoked(epochs, participant)
     return evoked, epochs, ica_raw.info
 
-
-def main():
+def get_folder_dict():
     home = '../../../../MEG_raw01/'
     home_folders = os.listdir(home)
     home_folders = [os.path.join(home, entry) for entry in home_folders if re.findall(r"^\w+", entry)]
@@ -87,6 +87,24 @@ def main():
     for folder in home_folders:
         entries = os.listdir(folder)
         folder_dict[folder] = [os.path.join(folder, entry) for entry in entries if re.findall(r"^\w+SD_\w*raw.fif", entry)]
+    return folder_dict
+
+def get_processed_meg_data(subj, folder_dict, meg_dir):
+    epochs_path = "../Data/Epochs/%s-epo.fif" % subj
+    evoked_path = "../Data/Evoked/%s-ave.fif" % subj
+    if os.path.isfile(epochs_path) and os.path.isfile(evoked_path):
+        epochs = mne.read_epochs(epochs_path)
+        evoked = mne.read_evokeds(evoked_path)[0]
+        return epochs, evoked
+    else:
+        evoked, epochs, info = process_data(folder_dict[meg_dir], 0)
+        evoked.save('../Data/Evoked/%s-ave.fif' % subj)
+        epochs.save('../Data/Epochs/%s-epo.fif' % subj)
+        return epochs, evoked
+
+
+def main():
+    folder_dict = get_folder_dict()
 
     i = 0
     evoked_list = []
