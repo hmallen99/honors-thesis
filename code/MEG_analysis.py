@@ -66,6 +66,7 @@ def plot_evoked(epochs, participant, plot=False):
     return evoked
 
 def get_raw(data):
+    print([raw_file for raw_file in data])
     raws = [mne.io.read_raw_fif(raw_file, verbose=False) for raw_file in data]
     raw = mne.io.concatenate_raws(raws)
     raw.load_data().filter(l_freq=2, h_freq=40)
