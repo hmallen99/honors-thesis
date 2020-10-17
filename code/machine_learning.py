@@ -17,7 +17,7 @@ def classify_target_gabors(path):
     gabor_lst = load_target_gabor(path)
     new_gabor_lst = []
     for gabor in gabor_lst:
-        gabor = np.round((gabor + 90) / 180)
+        #new_gabor_lst.append((gabor + 90) / 180)
         new_gabor_lst.append(gabor)
     return new_gabor_lst
 
