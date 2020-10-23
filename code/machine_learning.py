@@ -33,7 +33,8 @@ def generate_y_classes(path, n_classes=0):
     else:
         gabor_lst = load_target_gabor(path)
         for gabor in gabor_lst:
-            new_gabor_lst.append(np.floor((gabor + 90) / (180 / n_classes)))
+            new_gabor = np.floor((gabor + 90) / (180 / n_classes))
+            new_gabor_lst.append(np.minimum(new_gabor, n_classes-1))
     return new_gabor_lst
 
 def gabor_loss(y_true, y_pred):
