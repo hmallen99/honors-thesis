@@ -42,9 +42,9 @@ def gabor_loss(y_true, y_pred):
     cos_diff_flip = K.cos(2 * np.pi * (y_pred + 180) / 360) - K.cos(2 * np.pi * (y_true / 360))
     sin_diff_orig = K.sin(2 * np.pi * (y_pred / 360)) - K.sin(2 * np.pi * (y_true / 360))
     sin_diff_flip = K.sin(2 * np.pi * (y_pred + 180/ 360)) - K.sin(2 * np.pi * (y_true / 360))
-    cos_diff = K.minimum(K.abs(cos_diff_orig), K.abs(cos_diff_flip))
-    sin_diff = K.minimum(K.abs(sin_diff_orig), K.abs(sin_diff_flip))
-    return K.square(cos_diff) + K.square(sin_diff)
+    diff_flip = K.square(cos_diff_flip) + K.square(sin_diff_flip)
+    diff_orig = K.square(cos_diff_orig) + K.square(sin_diff_orig)
+    return K.minimum(diff_flip, diff_orig)
 
 
 class CosineRNNModel(object):
