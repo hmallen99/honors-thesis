@@ -22,7 +22,7 @@ def get_source_space(fpath):
 # run in a python terminal
 # mne.bem.make_watershed_bem(name, subjects_dir=fdir, overwrite=True)
 def make_bem(name, fdir, save=False):
-    model = mne.make_bem_model(subject=name, subjects_dir=fdir)
+    model = mne.make_bem_model(subject=name, subjects_dir=fdir, conductivity=[0.3])
     bem = mne.make_bem_solution(model)
     if save:
         mne.write_bem_solution("../Data/BEM/%s-bem-sol.fif" % name, bem)

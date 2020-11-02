@@ -20,10 +20,10 @@ def main():
     folder_dict = meg.get_folder_dict()
 
     # TODO: take these in as cmd line inputs
-    subj = 'MF-aligned'
-    meg_dir = '../../../../MEG_raw01/170131_fujita_SD'
+    subj = 'MK-aligned'
+    meg_dir = '../../../../MEG_raw01/170731_kawaguchi_SD'
     should_save_evoked_figs = False
-    should_train_model = True
+    should_train_model = False
     source_localization_dir = "/usr/local/freesurfer/subjects"
 
     # Collect Data

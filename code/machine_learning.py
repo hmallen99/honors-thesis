@@ -47,14 +47,37 @@ def gabor_loss(y_true, y_pred):
     return K.square(cos_diff) + K.square(sin_diff)
 
 
-class RNNModel(object):
+class CosineRNNModel(object):
     def __init__(self, n_epochs=5):
         self.n_epochs = n_epochs
         self.model = keras.Sequential()
-        self.model.add(layers.SimpleRNN(204, activation="relu"))
+        self.model.add(layers.SimpleRNN(64, activation="relu"))
         self.model.add(layers.Dense(32, activation="relu"))
         self.model.add(layers.Dense(units=1))
-        self.model.compile(loss=gabor_loss, optimizer="adam", metrics="accuracy")
+        self.model.compile(loss=gabor_loss, optimizer="adam", metrics="cosine_similarity")
+
+
+    def fit(self, X, y):
+        X, y = np.asarray(X), np.asarray(y)
+        self.model.fit(X, y, epochs=self.n_epochs, batch_size=10)
+        return self
+    
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def evaluate(self, X, y):
+        _, accuracy = self.model.evaluate(X, y)
+        return accuracy
+
+
+class LogisticRNNModel(object):
+    def __init__(self, n_epochs=5, n_outputs=2):
+        self.n_epochs = n_epochs
+        self.model = keras.Sequential()
+        self.model.add(layers.SimpleRNN(64, activation="relu"))
+        self.model.add(layers.Dense(32, activation="relu"))
+        self.model.add(layers.Dense(n_outputs, activation="softmax"))
+        self.model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
 
 
     def fit(self, X, y):
