@@ -7,6 +7,15 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow.keras.backend as K
 
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.linear_model import LogisticRegression, LinearRegression
+
+from mne.minimum_norm import apply_inverse_epochs, read_inverse_operator
+from mne.decoding import (cross_val_multiscore, LinearModel, SlidingEstimator,
+                          get_coef, Vectorizer, Scaler)
+
 def load_behavioral_data(path):
     return loadmat(path)
 
@@ -45,6 +54,14 @@ def gabor_loss(y_true, y_pred):
     diff_flip = K.square(cos_diff_flip) + K.square(sin_diff_flip)
     diff_orig = K.square(cos_diff_orig) + K.square(sin_diff_orig)
     return K.minimum(diff_flip, diff_orig)
+
+def calc_accuracy(y_pred, y_test):
+    total = 0
+    for i in range(len(y_pred)):
+        if y_pred[i] == y_test[i]:
+            total+=1
+
+    return total / len(y_pred)
 
 
 class CosineRNNModel(object):
@@ -92,3 +109,57 @@ class LogisticRNNModel(object):
         _, accuracy = self.model.evaluate(X, y)
         return accuracy
 
+class DenseSlidingModel(object):
+    def __init__(self, n_epochs=5, n_outputs=2, n_timesteps=16):
+        self.n_epochs = n_epochs
+        self.models = []
+        self.n_timesteps = n_timesteps
+        for _ in range(n_timesteps):
+            model = keras.Sequential()
+            model.add(layers.Dense(64, activation="relu"))
+            model.add(layers.Dense(32, activation="relu"))
+            model.add(layers.Dense(n_outputs, activation="softmax"))
+            model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
+            self.models.append(model)
+
+
+    def fit(self, X, y):
+        X, y = np.asarray(X), np.asarray(y)
+        for i in range(self.n_timesteps):
+            self.models[i].fit(X, y, epochs=self.n_epochs, batch_size=10)
+        return self
+    
+    def predict(self, X):
+        predictions = []
+        for i in range(self.n_timesteps):
+            predictions.append(self.models[i].predict(X[:, i]))
+        return predictions
+
+    def evaluate(self, X, y):
+        accuracies = []
+        for i in range(self.n_timesteps):
+            _, accuracy = self.models[i].evaluate(X[:, i], y)
+            accuracies.append(accuracy)
+        return accuracy
+
+
+class LogisticSlidingModel(object):
+    def __init__(self, max_iter=100, n_outputs=2, k=200, C=1, l1_ratio=0.9):
+        clf = make_pipeline(StandardScaler(),  # z-score normalization
+                    SelectKBest(f_classif, k=k),  # select features for speed
+                    LinearModel(LogisticRegression(C=C, solver='saga', l1_ratio=l1_ratio, penalty='elasticnet', max_iter=max_iter)))
+        self.model  = SlidingEstimator(clf, scoring="accuracy")
+
+    def fit(self, X, y):
+        X, y = np.asarray(X), np.asarray(y)
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def evaluate(self, X, y):
+        results = self.model.predict(X)
+        accuracy_lst = [calc_accuracy(results[:, i], y) for i in range(len(y))]
+        return accuracy_lst
+        
