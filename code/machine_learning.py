@@ -1,6 +1,8 @@
 import numpy as np
 import mne
 import sklearn
+import matplotlib.pyplot as plt
+
 from scipy.io import loadmat
 import tensorflow as tf
 from tensorflow import keras
@@ -15,6 +17,14 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from mne.minimum_norm import apply_inverse_epochs, read_inverse_operator
 from mne.decoding import (cross_val_multiscore, LinearModel, SlidingEstimator,
                           get_coef, Vectorizer, Scaler)
+
+behavior_lst = {
+    "KA": "01amano1101/amano1101_session_20161101T132416",
+    "SoM": "02minami1101/minami1101_session_20161101T145905",
+    "MF": "07fujita0131/fujita0131_session_20170131T145759",
+    "MK":  "12kawaguchi0731/kawaguchi0731_session_20170731T153637",
+    "NNo": "19noguchi0808/noguchi0808_session_20170808T102813",
+}
 
 def load_behavioral_data(path):
     return loadmat(path)
@@ -33,7 +43,18 @@ def classify_target_gabors(path):
         new_gabor_lst.append(new_gabor)
     return new_gabor_lst
 
-def generate_y_classes(path, n_classes=0):
+def generate_X(stc_epoch, n_train=400, n_test=100, mode="sklearn"):
+    X = []
+    if mode == "sklearn":
+        X = np.array([next(stc_epoch).crop(0, 0.4).bin(0.025).lh_data for i in range(n_train+n_test)])
+    elif mode == "keras":
+        X = np.einsum('ikj->ijk', np.array([next(stc_epoch).crop(0, 0.4, False).bin(0.025).data for i in range(n_train+n_test)]))
+    X_train, X_test = X[:n_train], X[n_train:n_train+n_test]
+    del stc_epoch
+    del X
+    return X_train, X_test
+
+def generate_y_classes(path, n_classes=2):
     new_gabor_lst = []
     if n_classes == 0:
         gabor_lst = load_target_gabor(path)
@@ -45,6 +66,17 @@ def generate_y_classes(path, n_classes=0):
             new_gabor = np.floor((gabor + 90) / (180 / n_classes))
             new_gabor_lst.append(np.minimum(new_gabor, n_classes-1))
     return new_gabor_lst
+
+def generate_y(behavior_subj, n_trials, n_train=400, n_test=100, n_classes=2):
+    y = []
+    for i in range(n_trials):
+        #y_path = "../../../../MEG/Behaviour/07fujita0131/fujita0131_session_20170131T145759_block%s_data.mat" % (i + 1)
+        y_path = "../../../../MEG/Behaviour/" + behavior_lst[behavior_subj] + "_block%s_data.mat" % (i + 1)
+        y += generate_y_classes(y_path, n_classes=n_classes)
+        
+    y = np.array(y)
+    y_train, y_test = y[:n_train], y[n_train:n_train+n_test]
+    return y_train, y_test
 
 def gabor_loss(y_true, y_pred):
     cos_diff_orig = K.cos(2 * np.pi * (y_pred / 360)) - K.cos(2 * np.pi * (y_true / 360))
@@ -62,6 +94,10 @@ def calc_accuracy(y_pred, y_test):
             total+=1
 
     return total / len(y_pred)
+
+def plot_results(time_scale, y_pred, subj):
+    plt.plot(time_scale, y_pred)
+    plt.savefig('ml_results_%s.png' % subj)
 
 
 class CosineRNNModel(object):
@@ -110,7 +146,7 @@ class LogisticRNNModel(object):
         return accuracy
 
 class DenseSlidingModel(object):
-    def __init__(self, n_epochs=5, n_outputs=2, n_timesteps=16):
+    def __init__(self, n_epochs=5, n_classes=2, n_timesteps=16):
         self.n_epochs = n_epochs
         self.models = []
         self.n_timesteps = n_timesteps
@@ -118,7 +154,7 @@ class DenseSlidingModel(object):
             model = keras.Sequential()
             model.add(layers.Dense(64, activation="relu"))
             model.add(layers.Dense(32, activation="relu"))
-            model.add(layers.Dense(n_outputs, activation="softmax"))
+            model.add(layers.Dense(n_classes, activation="softmax"))
             model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
             self.models.append(model)
 
@@ -144,7 +180,7 @@ class DenseSlidingModel(object):
 
 
 class LogisticSlidingModel(object):
-    def __init__(self, max_iter=100, n_outputs=2, k=200, C=1, l1_ratio=0.9):
+    def __init__(self, max_iter=100, n_classes=2, k=200, C=1, l1_ratio=0.9):
         clf = make_pipeline(StandardScaler(),  # z-score normalization
                     SelectKBest(f_classif, k=k),  # select features for speed
                     LinearModel(LogisticRegression(C=C, solver='saga', l1_ratio=l1_ratio, penalty='elasticnet', max_iter=max_iter)))
@@ -158,8 +194,8 @@ class LogisticSlidingModel(object):
     def predict(self, X):
         return self.model.predict(X)
 
-    def evaluate(self, X, y):
+    def evaluate(self, X, y, n_timesteps=16):
         results = self.model.predict(X)
-        accuracy_lst = [calc_accuracy(results[:, i], y) for i in range(len(y))]
+        accuracy_lst = [calc_accuracy(results[:, i], y) for i in range(n_timesteps)]
         return accuracy_lst
         
