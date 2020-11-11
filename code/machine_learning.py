@@ -20,10 +20,13 @@ from mne.decoding import (cross_val_multiscore, LinearModel, SlidingEstimator,
 
 behavior_lst = {
     "KA": "01amano1101/amano1101_session_20161101T132416",
-    "SoM": "02minami1101/minami1101_session_20161101T145905",
     "MF": "07fujita0131/fujita0131_session_20170131T145759",
     "MK":  "12kawaguchi0731/kawaguchi0731_session_20170731T153637",
     "NNo": "19noguchi0808/noguchi0808_session_20170808T102813",
+    "KO": "04okahashi1101/okahashi1101_session_20161101T161904",
+    "HHy": "18hashidume0807/hashidume0807_session_20170807T16225",
+    "HO": "06oishi0131/oishi0131_session_20170131T134216",
+    "AK": "05koizumi0131/koizumi0131_session_20170131T110526",
 }
 
 def load_behavioral_data(path):
@@ -43,7 +46,7 @@ def classify_target_gabors(path):
         new_gabor_lst.append(new_gabor)
     return new_gabor_lst
 
-def generate_X(stc_epoch, n_train=400, n_test=100, mode="sklearn"):
+def generate_stc_X(stc_epoch, n_train=400, n_test=100, mode="sklearn"):
     X = []
     if mode == "sklearn":
         X = np.array([next(stc_epoch).crop(0, 0.4).bin(0.025).lh_data for i in range(n_train+n_test)])
@@ -52,6 +55,14 @@ def generate_X(stc_epoch, n_train=400, n_test=100, mode="sklearn"):
     X_train, X_test = X[:n_train], X[n_train:n_train+n_test]
     del stc_epoch
     del X
+    return X_train, X_test
+
+def generate_epoch_X(epochs, n_train=400, n_test=100):
+    epochs.load_data().resample(40)
+    meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0, 0.4, False)
+    X = meg_epochs.get_data()
+
+    X_train, X_test = X[:n_train], X[n_train:n_train+n_test]
     return X_train, X_test
 
 def generate_y_classes(path, n_classes=2):
@@ -70,7 +81,6 @@ def generate_y_classes(path, n_classes=2):
 def generate_y(behavior_subj, n_trials, n_train=400, n_test=100, n_classes=2):
     y = []
     for i in range(n_trials):
-        #y_path = "../../../../MEG/Behaviour/07fujita0131/fujita0131_session_20170131T145759_block%s_data.mat" % (i + 1)
         y_path = "../../../../MEG/Behaviour/" + behavior_lst[behavior_subj] + "_block%s_data.mat" % (i + 1)
         y += generate_y_classes(y_path, n_classes=n_classes)
         
@@ -95,9 +105,10 @@ def calc_accuracy(y_pred, y_test):
 
     return total / len(y_pred)
 
-def plot_results(time_scale, y_pred, subj):
+def plot_results(time_scale, y_pred, ml_type, subj):
     plt.plot(time_scale, y_pred)
-    plt.savefig('ml_results_%s.png' % subj)
+    plt.savefig('../Figures/ML/ml_results_%s_%s.png' % (ml_type, subj))
+    plt.clf()
 
 
 class CosineRNNModel(object):
@@ -198,4 +209,8 @@ class LogisticSlidingModel(object):
         results = self.model.predict(X)
         accuracy_lst = [calc_accuracy(results[:, i], y) for i in range(n_timesteps)]
         return accuracy_lst
+
+    def cross_validate(self, X, y):
+        scores = mne.decoding.cross_val_multiscore(self.model, X, y, cv=5, n_jobs=1)
+        return scores.mean(0)
         
