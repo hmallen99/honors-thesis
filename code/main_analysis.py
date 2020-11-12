@@ -21,9 +21,9 @@ def main():
     folder_dict = meg.get_folder_dict()
 
     # TODO: take these in as cmd line inputs
-    subj = 'MK-aligned'
-    behavior_subj = 'MK'
-    meg_dir = '../../../../MEG_raw01/170731_kawaguchi_SD'
+    subj = 'KO-aligned'
+    behavior_subj = 'KO'
+    meg_dir = meg.meg_locations[behavior_subj]
     should_save_evoked_figs = False
     should_train_epoch_model = False
     should_train_stc_model = True

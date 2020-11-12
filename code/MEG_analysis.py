@@ -35,6 +35,17 @@ ica_exclude_picks = [
     [0]
 ]
 
+meg_locations = {
+    "KA": "../../../../MEG_raw01/161101_amano_SD",
+    "MF": "../../../../MEG_raw01/170131_fujita_SD",
+    "MK": "../../../../MEG_raw01/170731_kawaguchi_SD",
+    "NNo": "../../../../MEG_raw01/170808_noguchi_SD",
+    "KO": "../../../../MEG_raw01/161101_okahashi_SD",
+    "HHy": "../../../../MEG_raw01/170807_hashizume_SD",
+    "HO": "../../../../MEG_raw01/170131_oishi_SD",
+    "AK": "../../../../MEG_raw01/170131_koizumi_SD",
+}
+
 def apply_ica(raw, participant):
     print("Executing ICA")
     ica = mne.preprocessing.ICA(n_components=20, random_state=5, max_iter=800)
