@@ -24,7 +24,7 @@ behavior_lst = {
     "MK":  "12kawaguchi0731/kawaguchi0731_session_20170731T153637",
     "NNo": "19noguchi0808/noguchi0808_session_20170808T102813",
     "KO": "04okahashi1101/okahashi1101_session_20161101T161904",
-    "HHy": "18hashidume0807/hashidume0807_session_20170807T16225",
+    "HHy": "18hashidume0807/hashidume0807_session_20170807T162259",
     "HO": "06oishi0131/oishi0131_session_20170131T134216",
     "AK": "05koizumi0131/koizumi0131_session_20170131T110526",
 }
