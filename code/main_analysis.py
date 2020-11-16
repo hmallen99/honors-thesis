@@ -6,6 +6,28 @@ import source_localization as srcl
 import MEG_analysis as meg
 import machine_learning as ml
 
+meg_subj_lst = [
+    "KA",
+    "MF",
+    "MK",
+    "NNo",
+    "KO",
+    "HHy",
+    "HO",
+    "AK",
+]
+
+aligned_dir = {
+    "KA": "KA-aligned",
+    "MF": "MF-aligned",
+    "MK":  "MK-aligned",
+    "NNo": "NNo-aligned",
+    "KO": "KO-aligned",
+    "HHy": "HHy-aligned",
+    "HO": "HO-aligned",
+    "AK": "AK-aligned",
+}
+
 def save_evoked_figs(should_save, stc_fsaverage, subj, residual):
     if should_save:
         residual.plot_topo(title='Residual Plot', show=False).savefig('../Figures/%s_residual_erf.pdf' % subj)
@@ -17,17 +39,14 @@ def save_evoked_figs(should_save, stc_fsaverage, subj, residual):
             srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="rh")
             srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="lh")
 
-def main():
-    folder_dict = meg.get_folder_dict()
+def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch_model=False, 
+                should_train_stc_model=True, cross_val=True, evaluate=False):
 
-    # TODO: take these in as cmd line inputs
-    subj = 'KO-aligned'
-    behavior_subj = 'KO'
+    folder_dict = meg.get_folder_dict()
+    subj = aligned_dir[behavior_subj]
     meg_dir = meg.meg_locations[behavior_subj]
-    should_save_evoked_figs = False
-    should_train_epoch_model = False
-    should_train_stc_model = True
     source_localization_dir = "/usr/local/freesurfer/subjects"
+    results = []
 
     # Collect Data
     epochs, evoked = meg.get_processed_meg_data(subj, folder_dict, meg_dir)
@@ -47,12 +66,14 @@ def main():
         y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=5)
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=5, k=20, C=0.1, l1_ratio=0.95)
 
-        scores = model.cross_validate(X_train, y_train)
-        ml.plot_results(np.linspace(0, 0.375, 16), scores, "cross_val_epochs", subj)
+        if cross_val:
+            results = model.cross_validate(X_train, y_train)
+            ml.plot_results(np.linspace(0, 0.375, 16), results, "cross_val_epochs", subj)
 
-        #model.fit(X_train, y_train)
-        #results = model.evaluate(X_test, y_test)
-        #ml.plot_results(np.linspace(0, 0.375, 16), results, "epochs", subj)
+        if evaluate:
+            model.fit(X_train, y_train)
+            results = model.evaluate(X_test, y_test)
+            ml.plot_results(np.linspace(0, 0.375, 16), results, "epochs", subj)
 
     # Train Model with Source Estimate data
     if should_train_stc_model:
@@ -62,12 +83,25 @@ def main():
         y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=5)
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=5, k=1000, C=0.05, l1_ratio=0.95)
 
-        scores = model.cross_validate(X_train, y_train)
-        ml.plot_results(np.linspace(0, 0.375, 16), scores, "cross_val_source", subj)
+        if cross_val:
+            results = model.cross_validate(X_train, y_train)
+            ml.plot_results(np.linspace(0, 0.375, 16), results, "cross_val_source", subj)
         
-        #model.fit(X_train, y_train)
-        #results = model.evaluate(X_test, y_test)
-        #ml.plot_results(np.linspace(0, 0.375, 16), results, "source", subj)
+        if evaluate:
+            model.fit(X_train, y_train)
+            results = model.evaluate(X_test, y_test)
+            ml.plot_results(np.linspace(0, 0.375, 16), results, "source", subj)
+
+    return results
+
+def main():
+    training_results = []
+    for subject in meg_subj_lst:
+        result = run_subject(subject)
+        training_results.append(result)
+    
+    training_results = np.array(training_results).mean(0)
+    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross-val", "average")
 
     return 0
 
