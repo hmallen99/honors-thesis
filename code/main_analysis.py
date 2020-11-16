@@ -21,7 +21,7 @@ aligned_dir = {
     "KA": "KA-aligned",
     "MF": "MF-aligned",
     "MK":  "MK-aligned",
-    "NNo": "NNo-aligned",
+    "NNo": "NNo-4",
     "KO": "KO-aligned",
     "HHy": "HHy-aligned",
     "HO": "HO-aligned",
