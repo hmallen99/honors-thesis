@@ -45,3 +45,7 @@ https://mne.tools/stable/overview/cookbook.html
 7. Calculate the inverse operator
 
 8. Create the source estimate
+
+
+### Machine Learning
+1. 
