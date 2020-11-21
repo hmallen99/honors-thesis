@@ -1,0 +1,36 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage[rightcaption]{sidecap}
+\usepackage{hyperref}
+
+\title{ML Documentation}
+
+\author{Henry Allen}
+
+\begin{document}
+
+\maketitle
+\section{Machine Learning Analysis}
+\subsection{Machine Learning Methods}
+Analysis was performed in Python using the Keras library from TensorFlow, decoding libraries
+from MNE-Python, and the sklearn library. Data was split into training sets of 500 trials for
+each subject with 100 trials of test trials. Trials were time-binned from 0-0.4 seconds at 0.025
+second intervals to account for the 40hz MEG data. Models were trained for each subject to account
+for individual Model accuracy was calculated with 5-fold cross-validation and evaluation accuracy
+on the test dataset. Model accuracy was then compared with the results of a permutation test, in
+which we shuffled around the training and test labels of the dataset to calculate a baseline accuracy
+for a naive model. This test essentially compares our models to a chance accuracy. 
+
+\subsection{Sliding Models}
+\subsubsection{Logistic Regression}
+
+\subsubsection{Neural Network}
+
+\subsection{Recurrent Models}
+
+\subsection{Serial Dependence Model}
+    
+\end{document}
