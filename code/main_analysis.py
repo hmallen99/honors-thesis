@@ -51,6 +51,7 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
     X_train, X_test = [], []
     y_train, y_test = [], []
     figure_label = "default"
+    n_classes = 4
 
     # Collect Data
     epochs, evoked = meg.get_processed_meg_data(subj, folder_dict, meg_dir)
@@ -68,7 +69,7 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
     # Train Model with Epoch data
     if should_train_epoch_model:
         X_train, X_test = ml.generate_epoch_X(epochs, n_train=400, n_test=100)
-        y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=5)
+        y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=n_classes)
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=5, k=20, C=0.1, l1_ratio=0.95)
         figure_label = "epochs"
 
@@ -77,9 +78,14 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
         inv_op_epoch = mne.minimum_norm.make_inverse_operator(epochs.info, fwd, cov, loose=0.2, depth=0.8)
         stc_epoch = mne.minimum_norm.apply_inverse_epochs(epochs, inv_op_epoch, 0.11, return_generator=True)
         X_train, X_test = ml.generate_stc_X(stc_epoch, n_train=400, n_test=100, mode="sklearn")
-        y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=5)
+        y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=n_classes)
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=5, k=1000, C=0.05, l1_ratio=0.95)
         figure_label = "source"
+    
+    print("\n\nHistogram:")
+    hist = np.histogram(y_train, bins=np.arange(n_classes+1))
+    print(hist)
+    print("\n\n\n")
 
     if permutation_test:
         figure_label += "_permutation"
@@ -101,11 +107,12 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
 def main():
     training_results = []
     for subject in meg_subj_lst:
-        result = run_subject(subject, permutation_test=True)
+        result = run_subject(subject, permutation_test=False)
         training_results.append(result)
     
+    training_error = np.std(np.array(training_results), axis=0)
     training_results = np.array(training_results).mean(0)
-    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_permutation", "average")
+    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_error", "average", training_err=training_error)
 
     return 0
 

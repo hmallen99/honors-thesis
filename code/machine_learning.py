@@ -105,8 +105,12 @@ def calc_accuracy(y_pred, y_test):
 
     return total / len(y_pred)
 
-def plot_results(time_scale, y_pred, ml_type, subj):
-    plt.plot(time_scale, y_pred)
+def plot_results(time_scale, y_pred, ml_type, subj, training_err=[]):
+    if len(training_err) > 0:
+        plt.errorbar(time_scale, y_pred, yerr=training_err)
+    else:
+        plt.plot(time_scale, y_pred)
+    plt.ylim((0, 0.4))
     plt.savefig('../Figures/ML/ml_results_%s_%s.png' % (ml_type, subj))
     plt.clf()
 
