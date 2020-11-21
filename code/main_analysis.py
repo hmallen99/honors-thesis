@@ -107,12 +107,12 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
 def main():
     training_results = []
     for subject in meg_subj_lst:
-        result = run_subject(subject, permutation_test=False)
+        result = run_subject(subject, permutation_test=True)
         training_results.append(result)
     
     training_error = np.std(np.array(training_results), axis=0)
     training_results = np.array(training_results).mean(0)
-    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_error", "average", training_err=training_error)
+    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_permutation_error", "average", training_err=training_error)
 
     return 0
 
