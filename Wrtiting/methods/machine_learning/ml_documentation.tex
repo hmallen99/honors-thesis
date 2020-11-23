@@ -18,7 +18,14 @@
 Analysis was performed in Python using the Keras library from TensorFlow, decoding libraries
 from MNE-Python, and the sklearn library. Data was split into training sets of 500 trials for
 each subject with 100 trials of test trials. Trials were time-binned from 0-0.4 seconds at 0.025
-second intervals to account for the 40hz MEG data. Models were trained for each subject to account
+second intervals to account for the 40hz MEG data. The data is split into classes based on angle.
+For example, if we wanted 4 classes, class 0 corresponds to gabors oriented from 0-45 degrees,
+class 1 from 45-90, class 2 from 90-135, class 3 from 135-180. An issue is immediately apparent from
+these class divisions. A gabor oriented at 179 degrees is marked as class 3 despite being very similar
+to a gabor marked in class 1, at 1 degree for example. To account for this, we can use a few tactics:
+(1) using many classes to minimize the inaccuracy of any one individual class, (2) split the first class
+between 180 degrees and 0 degrees, or (3) develop a cost function that takes the cosine encoding into account. 
+Models were trained for each subject to account
 for individual Model accuracy was calculated with 5-fold cross-validation and evaluation accuracy
 on the test dataset. Model accuracy was then compared with the results of a permutation test, in
 which we shuffled around the training and test labels of the dataset to calculate a baseline accuracy
@@ -26,6 +33,7 @@ for a naive model. This test essentially compares our models to a chance accurac
 
 \subsection{Sliding Models}
 \subsubsection{Logistic Regression}
+
 
 \subsubsection{Neural Network}
 

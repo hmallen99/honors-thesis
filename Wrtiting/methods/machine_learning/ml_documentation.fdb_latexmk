@@ -1,5 +1,5 @@
 # Fdb version 3
-["pdflatex"] 1605933459 "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.tex" "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.pdf" "ml_documentation" 1605933460
+["pdflatex"] 1605947941 "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.tex" "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.pdf" "ml_documentation" 1605947942
   "C:/Program Files/MiKTeX/fonts/tfm/public/amsfonts/cmextra/cmbsy7.tfm" 1233951848 1120 7f9f170e8aa57527ad6c49feafd45d54 ""
   "C:/Program Files/MiKTeX/fonts/tfm/public/amsfonts/cmextra/cmmib7.tfm" 1233951848 1508 6e807ff901c35a5f1fde0ca275533df8 ""
   "C:/Program Files/MiKTeX/fonts/tfm/public/cm/cmbsy10.tfm" 1136765053 1116 4e6ba9d7914baa6482fd69f67d126380 ""
@@ -62,15 +62,15 @@
   "C:/Program Files/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/henbo/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1598743738 10040712 9ed4d9b8826b9ea0fe9c719656d53f20 ""
   "C:/Users/henbo/AppData/Local/MiKTeX/pdftex/config/pdftex.map" 1598743730 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
-  "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.aux" 1605933460 1556 2773d0f1cbd929cd6c5ddf96f245be75 ""
-  "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.tex" 1605933459 1325 921383dcdba3cc5984ce501dbecf85f3 ""
-  "ml_documentation.aux" 1605933460 1556 2773d0f1cbd929cd6c5ddf96f245be75 "pdflatex"
-  "ml_documentation.out" 1605933460 484 c110dcfb51ed1a25d4ed3fcd2146961e "pdflatex"
-  "ml_documentation.tex" 1605933459 1325 921383dcdba3cc5984ce501dbecf85f3 ""
+  "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.aux" 1605947942 1556 2773d0f1cbd929cd6c5ddf96f245be75 ""
+  "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.tex" 1605947940 1999 a180da356b5c5ed9dfb1cf37e1bf5ea2 ""
+  "ml_documentation.aux" 1605947942 1556 2773d0f1cbd929cd6c5ddf96f245be75 "pdflatex"
+  "ml_documentation.out" 1605947942 484 c110dcfb51ed1a25d4ed3fcd2146961e "pdflatex"
+  "ml_documentation.tex" 1605947940 1999 a180da356b5c5ed9dfb1cf37e1bf5ea2 ""
   (generated)
   "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.log"
-  "ml_documentation.out"
   "c:/Users/henbo/honors-thesis/honors-thesis/Wrtiting/methods/machine_learning/ml_documentation.pdf"
   "ml_documentation.pdf"
-  "ml_documentation.aux"
   "ml_documentation.log"
+  "ml_documentation.aux"
+  "ml_documentation.out"
