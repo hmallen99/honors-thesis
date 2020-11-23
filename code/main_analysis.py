@@ -33,10 +33,10 @@ def save_evoked_figs(should_save, stc_fsaverage, subj, residual):
         residual.plot_topo(title='Residual Plot', show=False).savefig('../Figures/%s_residual_erf.pdf' % subj)
         srcl.save_movie(stc_fsaverage, subj)
 
-        for i in [0, 0.1, 0.15, 0.192, 0.25, 0.3]:
+        for i in [0, 0.1, 0.2, 0.3]:
             srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="dorsal", hemi="both")
             srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="caudal", hemi="both")
-            srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="rh")
+            #srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="rh")
             srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="lh")
 
 def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch_model=False, 
@@ -107,12 +107,12 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
 def main():
     training_results = []
     for subject in meg_subj_lst:
-        result = run_subject(subject, permutation_test=False)
+        result = run_subject(subject, permutation_test=True, should_train_epoch_model=True, should_train_stc_model=False)
         training_results.append(result)
     
     training_error = np.std(np.array(training_results), axis=0)
     training_results = np.array(training_results).mean(0)
-    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_error", "average", training_err=training_error)
+    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_permutation_error", "epochs_average", training_err=training_error)
 
     return 0
 
