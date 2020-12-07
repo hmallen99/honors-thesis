@@ -36,25 +36,23 @@ def save_main_figs(subj):
     
     fig = plt.figure(figsize=(24, 8))
 
-    ax_erf = plt.add_subplot(1, 3, 1)
+    ax_erf = fig.add_subplot(1, 3, 1)
     ax_erf.imshow(erf_fig)
 
-    ax_beh = plt.add_subplot(1, 3, 2)
+    ax_beh = fig.add_subplot(1, 3, 2)
     ax_beh.imshow(behavior_fig)
 
-    ax_acc = plt.add_subplot(1, 3, 3)
-    ax_axx.imshow(accuracy_fig)
+    ax_acc = fig.add_subplot(1, 3, 3)
+    ax_acc.imshow(accuracy_fig)
 
-    plt.show()
-
-    plt.savefig("../Figures/combined/%s_combined.png" % aligned_dir[subj])
+    plt.savefig("../Figures/combined/%s_combined.png" % aligned_dir[subj], dpi=700)
     plt.clf()
 
 
 def save_evoked_figs(should_save, stc_fsaverage, subj, residual):
     if should_save:
-        residual.plot_topo(title='Residual Plot', show=False).savefig('../Figures/%s_residual_erf.png' % subj)
-        srcl.save_movie(stc_fsaverage, subj)
+        residual.plot_topo(title='Residual Plot', show=False).savefig('../Figures/residuals/%s_residual_erf.png' % subj, dpi=500)
+        #srcl.save_movie(stc_fsaverage, subj)
 
         #for i in [0, 0.1, 0.2, 0.3]:
             #srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="dorsal", hemi="both")
@@ -104,11 +102,6 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
         y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=n_classes)
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=5, k=1000, C=0.05, l1_ratio=0.95)
         figure_label = "source"
-    
-    print("\n\nHistogram:")
-    hist = np.histogram(y_train, bins=np.arange(n_classes+1))
-    print(hist)
-    print("\n\n\n")
 
     if permutation_test:
         figure_label += "_permutation"
@@ -123,7 +116,8 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
         model.fit(X_train, y_train)
         results = model.evaluate(X_test, y_test)
         
-    ml.plot_results(np.linspace(0, 0.375, 16), results, figure_label, subj)
+    if should_train_epoch_model or should_train_stc_model:
+        ml.plot_results(np.linspace(0, 0.375, 16), results, figure_label, subj)
 
     return results
 
@@ -131,7 +125,7 @@ def main():
     training_results = []
     for subject in meg_subj_lst:
         #ml.plot_behavior(subject, 5)
-        result = run_subject(subject, should_save_evoked_figs=True, should_train_stc_model=False)
+        result = run_subject(subject, should_save_evoked_figs=True, should_train_stc_model=False, cross_val=False)
         #training_results.append(result)
         save_main_figs(subject)
     
