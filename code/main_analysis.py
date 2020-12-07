@@ -5,6 +5,7 @@ import numpy as np
 import source_localization as srcl
 import MEG_analysis as meg
 import machine_learning as ml
+import matplotlib.pyplot as plt
 
 meg_subj_lst = [
     "KA",
@@ -28,16 +29,38 @@ aligned_dir = {
     "AK": "AK-aligned",
 }
 
+def save_main_figs(subj):
+    erf_fig = plt.imread("../Figures/residuals/%s_residual_erf.png" % aligned_dir[subj])
+    behavior_fig = plt.imread("../Figures/Behavior/%s_behavior.png" % subj)
+    accuracy_fig = plt.imread("../Figures/ML/ml_results_source_cross_val_%s.png" % aligned_dir[subj])
+    
+    fig = plt.figure(figsize=(24, 8))
+
+    ax_erf = plt.add_subplot(1, 3, 1)
+    ax_erf.imshow(erf_fig)
+
+    ax_beh = plt.add_subplot(1, 3, 2)
+    ax_beh.imshow(behavior_fig)
+
+    ax_acc = plt.add_subplot(1, 3, 3)
+    ax_axx.imshow(accuracy_fig)
+
+    plt.show()
+
+    plt.savefig("../Figures/combined/%s_combined.png" % aligned_dir[subj])
+    plt.clf()
+
+
 def save_evoked_figs(should_save, stc_fsaverage, subj, residual):
     if should_save:
-        residual.plot_topo(title='Residual Plot', show=False).savefig('../Figures/%s_residual_erf.pdf' % subj)
+        residual.plot_topo(title='Residual Plot', show=False).savefig('../Figures/%s_residual_erf.png' % subj)
         srcl.save_movie(stc_fsaverage, subj)
 
-        for i in [0, 0.1, 0.2, 0.3]:
-            srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="dorsal", hemi="both")
-            srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="caudal", hemi="both")
+        #for i in [0, 0.1, 0.2, 0.3]:
+            #srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="dorsal", hemi="both")
+            #srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="caudal", hemi="both")
             #srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="rh")
-            srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="lh")
+            #srcl.plot_source(stc_fsaverage, subject=subj, initial_time=i, views="lateral", hemi="lh")
 
 def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch_model=False, 
                 should_train_stc_model=True, cross_val=True, evaluate=False, permutation_test=False):
@@ -107,14 +130,15 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
 def main():
     training_results = []
     for subject in meg_subj_lst:
-        ml.plot_behavior(subject, 5)
-        #result = run_subject(subject, permutation_test=True, should_train_epoch_model=True, should_train_stc_model=False)
+        #ml.plot_behavior(subject, 5)
+        result = run_subject(subject, should_save_evoked_figs=True, should_train_stc_model=False)
         #training_results.append(result)
+        save_main_figs(subject)
     
     #training_error = np.std(np.array(training_results), axis=0)
     #training_results = np.array(training_results).mean(0)
     #ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_permutation_error", "epochs_average", training_err=training_error)
-
+    
     return 0
 
 
