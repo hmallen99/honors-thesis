@@ -38,7 +38,7 @@ def load_target_gabor(path):
 
 def load_pred_data(path):
     data = load_behavioral_data(path)
-    return np.nan_to_num(data["GabOrSpec"])
+    return data["GabOrSpec"]
 
 def classify_target_gabors(path):
     gabor_lst = load_target_gabor(path)
@@ -121,8 +121,8 @@ def plot_behavior(behavior_subj, n_trials):
     y_pred = []
     for i in range(n_trials):
         y_path = "../../../../MEG/Behaviour/" + behavior_lst[behavior_subj] + "_block%s_data.mat" % (i + 1)
-        y_actual += load_target_gabor(y_path)
-        y_pred += load_pred_data(y_path)
+        y_actual.append(list(load_target_gabor(y_path)))
+        y_pred.append(list(load_pred_data(y_path)))
 
     plt.scatter(y_actual, y_pred)
     # TODO: Make Behavior directory

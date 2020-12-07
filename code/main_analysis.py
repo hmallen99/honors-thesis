@@ -109,11 +109,11 @@ def main():
     for subject in meg_subj_lst:
         ml.plot_behavior(subject, 5)
         #result = run_subject(subject, permutation_test=True, should_train_epoch_model=True, should_train_stc_model=False)
-        training_results.append(result)
+        #training_results.append(result)
     
-    training_error = np.std(np.array(training_results), axis=0)
-    training_results = np.array(training_results).mean(0)
-    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_permutation_error", "epochs_average", training_err=training_error)
+    #training_error = np.std(np.array(training_results), axis=0)
+    #training_results = np.array(training_results).mean(0)
+    #ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_permutation_error", "epochs_average", training_err=training_error)
 
     return 0
 
