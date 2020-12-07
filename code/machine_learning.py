@@ -36,12 +36,14 @@ def load_target_gabor(path):
     data = load_behavioral_data(path)
     return data["TargetGabor"][0]
 
+def load_pred_data(path):
+    data = load_behavioral_data(path)
+    return np.nan_to_num(data["GabOrSpec"])
+
 def classify_target_gabors(path):
     gabor_lst = load_target_gabor(path)
     new_gabor_lst = []
     for gabor in gabor_lst:
-        #new_gabor_lst.append((gabor + 90) / 180)
-        #new_gabor_lst.append(gabor)
         new_gabor = 1 if gabor > 0 else 0
         new_gabor_lst.append(new_gabor)
     return new_gabor_lst
@@ -114,6 +116,18 @@ def plot_results(time_scale, y_pred, ml_type, subj, training_err=[]):
     plt.savefig('../Figures/ML/ml_results_%s_%s.png' % (ml_type, subj))
     plt.clf()
 
+def plot_behavior(behavior_subj, n_trials):
+    y_actual = []
+    y_pred = []
+    for i in range(n_trials):
+        y_path = "../../../../MEG/Behaviour/" + behavior_lst[behavior_subj] + "_block%s_data.mat" % (i + 1)
+        y_actual += load_target_gabor(y_path)
+        y_pred += load_pred_data(y_path)
+
+    plt.scatter(y_actual, y_pred)
+    # TODO: Make Behavior directory
+    plt.savefig("../Figures/Behavior/%s_behavior.png" % behavior_subj)
+    plt.clf()
 
 class CosineRNNModel(object):
     def __init__(self, n_epochs=5):

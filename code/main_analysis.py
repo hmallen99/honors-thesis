@@ -107,7 +107,8 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
 def main():
     training_results = []
     for subject in meg_subj_lst:
-        result = run_subject(subject, permutation_test=True, should_train_epoch_model=True, should_train_stc_model=False)
+        ml.plot_behavior(subject, 5)
+        #result = run_subject(subject, permutation_test=True, should_train_epoch_model=True, should_train_stc_model=False)
         training_results.append(result)
     
     training_error = np.std(np.array(training_results), axis=0)
