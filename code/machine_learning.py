@@ -9,7 +9,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow.keras.backend as K
 
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.linear_model import LogisticRegression, LinearRegression
@@ -67,7 +67,7 @@ def generate_epoch_X(epochs, n_train=400, n_test=100):
     X_train, X_test = X[:n_train], X[n_train:n_train+n_test]
     return X_train, X_test
 
-def generate_y_classes(path, n_classes=2):
+def generate_y_classes(path, n_classes=2, use_off=True):
     new_gabor_lst = []
     if n_classes == 0:
         gabor_lst = load_target_gabor(path)
@@ -76,15 +76,21 @@ def generate_y_classes(path, n_classes=2):
     else:
         gabor_lst = load_target_gabor(path)
         for gabor in gabor_lst:
-            new_gabor = np.floor((gabor + 90) / (180 / n_classes))
-            new_gabor_lst.append(np.minimum(new_gabor, n_classes-1))
+            if use_off:
+                offset = 180 / (n_classes * 2)
+                new_gabor = (gabor + 90 + offset) % 180
+                new_gabor = np.floor(new_gabor / (180 / n_classes))
+                new_gabor_lst.append(np.minimum(new_gabor, n_classes-1))
+            else:
+                new_gabor = np.floor((gabor + 90) / (180 / n_classes))
+                new_gabor_lst.append(np.minimum(new_gabor, n_classes-1))
     return new_gabor_lst
 
-def generate_y(behavior_subj, n_trials, n_train=400, n_test=100, n_classes=2):
+def generate_y(behavior_subj, n_trials, n_train=400, n_test=100, n_classes=2, use_off=True):
     y = []
     for i in range(n_trials):
         y_path = "../../../../MEG/Behaviour/" + behavior_lst[behavior_subj] + "_block%s_data.mat" % (i + 1)
-        y += generate_y_classes(y_path, n_classes=n_classes)
+        y += generate_y_classes(y_path, n_classes=n_classes, use_off=use_off)
         
     y = np.array(y)
     y_train, y_test = y[:n_train], y[n_train:n_train+n_test]
@@ -210,10 +216,10 @@ class DenseSlidingModel(object):
 
 class LogisticSlidingModel(object):
     def __init__(self, max_iter=100, n_classes=2, k=200, C=1, l1_ratio=0.9):
-        clf = make_pipeline(StandardScaler(),  # z-score normalization
-                    SelectKBest(f_classif, k=k),  # select features for speed
-                    LinearModel(LogisticRegression(C=C, solver='saga', l1_ratio=l1_ratio, penalty='elasticnet', max_iter=max_iter)))
-        self.model  = SlidingEstimator(clf, scoring="accuracy")
+        self.clf = Pipeline([('scaler', StandardScaler()), 
+                        ('f_classif', SelectKBest(f_classif, k)),
+                        ('linear', LinearModel(LogisticRegression(C=C, solver='saga', l1_ratio=l1_ratio, penalty='elasticnet', max_iter=max_iter)))])
+        self.model  = SlidingEstimator(self.clf, scoring="accuracy")
 
     def fit(self, X, y):
         X, y = np.asarray(X), np.asarray(y)
@@ -231,4 +237,10 @@ class LogisticSlidingModel(object):
     def cross_validate(self, X, y):
         scores = mne.decoding.cross_val_multiscore(self.model, X, y, cv=5, n_jobs=1)
         return scores.mean(0)
+
+    def get_features(self, subj, i):
+        features = self.model.estimators_[i].named_steps['f_classif'].get_support()
+        np.save("%s_k_best" % subj, features)
+        return features
+
         

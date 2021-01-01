@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 
 meg_subj_lst = [
     "KA",
-    "MF",
-    "MK",
-    "NNo",
-    "KO",
-    "HHy",
-    "HO",
-    "AK",
+    #"MF",
+    #"MK",
+    #"NNo",
+    #"KO",
+    #"HHy",
+    #"HO",
+    #"AK",
 ]
 
 aligned_dir = {
@@ -80,6 +80,13 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
     cov = mne.compute_covariance(epochs, tmax=0., method=['shrunk', 'empirical'], rank=None, verbose=False)
     fwd = srcl.make_forward_sol(evoked, src, bem, "%s/%s-trans.fif" % (meg_dir, subj))
 
+    bad = []
+    for i in range(len(epochs.events)):
+        if epochs.events[i][1] != 0:
+            bad += [i]
+
+    epochs.drop(bad)
+
     # Generate figures for the evoked object
     if should_save_evoked_figs:
         inv_op = srcl.make_inverse_operator(evoked, fwd, cov)
@@ -100,7 +107,7 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
         stc_epoch = mne.minimum_norm.apply_inverse_epochs(epochs, inv_op_epoch, 0.11, return_generator=True)
         X_train, X_test = ml.generate_stc_X(stc_epoch, n_train=400, n_test=100, mode="sklearn")
         y_train, y_test = ml.generate_y(behavior_subj, 5, n_train=400, n_test=100, n_classes=n_classes)
-        model = ml.LogisticSlidingModel(max_iter=1500, n_classes=5, k=1000, C=0.05, l1_ratio=0.95)
+        model = ml.LogisticSlidingModel(max_iter=2000, n_classes=4, k=500, C=0.05, l1_ratio=0.95)
         figure_label = "source"
 
     if permutation_test:
@@ -114,6 +121,7 @@ def run_subject(behavior_subj, should_save_evoked_figs=False, should_train_epoch
     elif evaluate:
         figure_label += "_test"
         model.fit(X_train, y_train)
+        model.get_features(behavior_subj, 9)
         results = model.evaluate(X_test, y_test)
         
     if should_train_epoch_model or should_train_stc_model:
@@ -125,13 +133,13 @@ def main():
     training_results = []
     for subject in meg_subj_lst:
         #ml.plot_behavior(subject, 5)
-        result = run_subject(subject, should_save_evoked_figs=True, should_train_stc_model=False, cross_val=False)
-        #training_results.append(result)
-        save_main_figs(subject)
+        result = run_subject(subject, should_save_evoked_figs=False, should_train_stc_model=True, cross_val=True)
+        training_results.append(result)
+        #save_main_figs(subject)
     
-    #training_error = np.std(np.array(training_results), axis=0)
-    #training_results = np.array(training_results).mean(0)
-    #ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_permutation_error", "epochs_average", training_err=training_error)
+    training_error = np.std(np.array(training_results), axis=0)
+    training_results = np.array(training_results).mean(0)
+    ml.plot_results(np.linspace(0, 0.375, 16), training_results, "cross_val_error", "stc_average", training_err=training_error)
     
     return 0
 
