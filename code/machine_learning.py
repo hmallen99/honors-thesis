@@ -13,6 +13,8 @@ from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import RandomForestClassifier
 
 from mne.minimum_norm import apply_inverse_epochs, read_inverse_operator
 from mne.decoding import (cross_val_multiscore, LinearModel, SlidingEstimator,
@@ -213,12 +215,16 @@ class DenseSlidingModel(object):
             accuracies.append(accuracy)
         return accuracy
 
+    def cross_validate(self, X, y):
+        # TODO: cross validation
+        pass
+
 
 class LogisticSlidingModel(object):
     def __init__(self, max_iter=100, n_classes=2, k=200, C=1, l1_ratio=0.9):
         self.clf = Pipeline([('scaler', StandardScaler()), 
                         ('f_classif', SelectKBest(f_classif, k)),
-                        ('linear', LinearModel(LogisticRegression(C=C, solver='saga', l1_ratio=l1_ratio, penalty='elasticnet', max_iter=max_iter)))])
+                        ('linear', LinearModel(LogisticRegression(C=C, solver='saga', l1_ratio=l1_ratio, penalty='elasticnet', max_iter=max_iter, multi_class="multinomial")))])
         self.model  = SlidingEstimator(self.clf, scoring="accuracy")
 
     def fit(self, X, y):
@@ -235,7 +241,7 @@ class LogisticSlidingModel(object):
         return accuracy_lst
 
     def cross_validate(self, X, y):
-        scores = mne.decoding.cross_val_multiscore(self.model, X, y, cv=5, n_jobs=1)
+        scores = mne.decoding.cross_val_multiscore(self.model, X, y, cv=5, n_jobs=-1)
         return scores.mean(0)
 
     def get_features(self, subj, i):
@@ -243,4 +249,63 @@ class LogisticSlidingModel(object):
         np.save("%s_k_best" % subj, features)
         return features
 
+
+class SVMSlidingModel(object):
+    def __init__(self, k=200, C=1):
+        self.clf = Pipeline([('scaler', StandardScaler()), 
+                        ('f_classif', SelectKBest(f_classif, k)),
+                        ('linear', LinearModel(LinearSVC(C=C, max_iter=4000)))])
+        self.model  = SlidingEstimator(self.clf, scoring="accuracy")
+
+    def fit(self, X, y):
+        X, y = np.asarray(X), np.asarray(y)
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def evaluate(self, X, y, n_timesteps=16):
+        results = self.model.predict(X)
+        accuracy_lst = [calc_accuracy(results[:, i], y) for i in range(n_timesteps)]
+        return accuracy_lst
+
+    def cross_validate(self, X, y):
+        scores = mne.decoding.cross_val_multiscore(self.model, X, y, cv=5, n_jobs=-1)
+        return scores.mean(0)
+
+    def get_features(self, subj, i):
+        features = self.model.estimators_[i].named_steps['f_classif'].get_support()
+        np.save("%s_k_best" % subj, features)
+        return features
+
+
+class RandomForestSlidingModel(object):
+    def __init__(self, k=200, C=1):
+        self.clf = Pipeline([('scaler', StandardScaler()), 
+                        ('f_classif', SelectKBest(f_classif, k)),
+                        ('linear', LinearModel(RandomForestClassifier()))])
+        self.model  = SlidingEstimator(self.clf, scoring="accuracy")
+
+    def fit(self, X, y):
+        X, y = np.asarray(X), np.asarray(y)
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def evaluate(self, X, y, n_timesteps=16):
+        results = self.model.predict(X)
+        accuracy_lst = [calc_accuracy(results[:, i], y) for i in range(n_timesteps)]
+        return accuracy_lst
+
+    def cross_validate(self, X, y):
+        scores = mne.decoding.cross_val_multiscore(self.model, X, y, cv=5, n_jobs=-1)
+        return scores.mean(0)
+
+    def get_features(self, subj, i):
+        features = self.model.estimators_[i].named_steps['f_classif'].get_support()
+        np.save("%s_k_best" % subj, features)
+        return features
         
