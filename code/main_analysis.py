@@ -117,26 +117,58 @@ def analyze_sd(subj):
         ors_diff = np.abs(labels[i-1] - labels[i])
         diffs.append(ors_diff)
 
-    accuracies, split_diffs = [], []
-    X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0)
+    diffs = np.array(diffs)
+
+    bins = {}
+    for i in range(18):
+        bins[i] = []
+
+    X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
     for train, test in kfold.split(X):
         X_train, X_test = X[train], X[test]
         y_train, y_test = y[train], y[test]
-        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=1000, C=0.05, l1_ratio=0.95)
+        #model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=1000, C=0.05, l1_ratio=0.95)
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.1, l1_ratio=0.95)
         model.fit(X_train, y_train)
-        accuracies.extend(model.evaluate(X_test, y_test))
-        split_diffs.extend(diffs[test]) 
+        pred = model.predict(X_test)
+        split_diffs = diffs[test]
+        for i in range(100):
+            acc = 0
+            for j in range(16):
+                if pred[i][j] == y_test[i]:
+                    acc += 1
+            acc /= 16
 
-    return accuracies, split_diffs
+            bin_idx = split_diffs[i] // 10
+            bins[bin_idx].append(acc)
+
+    bin_accuracies = []
+    for i in range(18):
+        acc = np.mean(np.array(bins[i]))
+        bin_accuracies.append(acc)
+
+    plt.bar(np.arange(18), bin_accuracies)
+    plt.savefig("../Figures/SD/sd_accuracy_%s.png" % subj)
+    plt.clf()
+    return bins
 
 def analyze_sd_all_subjects():
-    accuracies = []
-    diffs = []
-    for subj in meg_subj_lst:
-        accuracy, diff = analyze_sd(subj)
-        accuracies.extend(accuracy)
-        diffs.extend(diff)
+    bins = {}
+    for i in range(18):
+        bins[i] = []
 
+    for subj in meg_subj_lst:
+        subj_bins = analyze_sd(subj)
+        for i in range(18):
+            bins[i].extend(subj_bins[i])
+
+    accuracies = np.zeros(18)
+    for i in range(18):
+        accuracies[i] = np.mean(np.array(bins[i]))
+
+    plt.bar(np.arange(18), accuracies)
+    plt.savefig("../Figures/SD/sd_accuracy_all.png")
+    plt.clf()
     return
 
     
@@ -157,8 +189,9 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    run_all_subjects(data="epochs")
-    run_all_subjects(data="epochs", permutation_test=True)
+    #run_all_subjects(data="epochs")
+    #run_all_subjects(data="epochs", permutation_test=True)
+    analyze_sd_all_subjects()
     return 0
 
 
