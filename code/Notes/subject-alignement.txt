@@ -6,7 +6,7 @@ KO: okahashi
 YMi: minami or miyamuchi
 AK: koizumi
 KY: yasui, yuasa, or yasumura
-NN: nakamura or nakagawa
+NN: nakagawa
 TOu: ouchida?
 JL: lyu
 NNo: Noguchi
@@ -15,7 +15,7 @@ VA: alex
 DI: ishikawa
 HY: yasui, yuasa, or yasumura
 MK: kawaguchi
-HN: nakamura or nakagawa
+HN: nakamura
 Hhy: hashizume?
 RS: sunami
 TE: emoto

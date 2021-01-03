@@ -15,6 +15,7 @@ from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import KFold
 
 from mne.minimum_norm import apply_inverse_epochs, read_inverse_operator
 from mne.decoding import (cross_val_multiscore, LinearModel, SlidingEstimator,
@@ -31,6 +32,21 @@ behavior_lst = {
     "AK": "05koizumi0131/koizumi0131_session_20170131T110526",
 }
 
+new_beh_lst = {
+    "KA": 1,
+    "MF": 7,
+    "MK": 12,
+    "NNo": 19,
+    "KO": 4,
+    "HHy": 18,
+    "HO": 6,
+    "AK": 5,
+    "HN": 21,
+    "NN": 3,
+    "JL": 9,
+    "DI": 16,
+}
+
 def load_behavioral_data(path):
     return loadmat(path)
 
@@ -41,62 +57,6 @@ def load_target_gabor(path):
 def load_pred_data(path):
     data = load_behavioral_data(path)
     return data["GabOrSpec"]
-
-def classify_target_gabors(path):
-    gabor_lst = load_target_gabor(path)
-    new_gabor_lst = []
-    for gabor in gabor_lst:
-        new_gabor = 1 if gabor > 0 else 0
-        new_gabor_lst.append(new_gabor)
-    return new_gabor_lst
-
-def generate_stc_X(stc_epoch, n_train=400, n_test=100, mode="sklearn"):
-    X = []
-    if mode == "sklearn":
-        X = np.array([next(stc_epoch).crop(0, 0.4).bin(0.025).lh_data for i in range(n_train+n_test)])
-    elif mode == "keras":
-        X = np.einsum('ikj->ijk', np.array([next(stc_epoch).crop(0, 0.4, False).bin(0.025).data for i in range(n_train+n_test)]))
-    X_train, X_test = X[:n_train], X[n_train:n_train+n_test]
-    del stc_epoch
-    del X
-    return X_train, X_test
-
-def generate_epoch_X(epochs, n_train=400, n_test=100):
-    epochs.load_data().resample(40)
-    meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0, 0.4, False)
-    X = meg_epochs.get_data()
-
-    X_train, X_test = X[:n_train], X[n_train:n_train+n_test]
-    return X_train, X_test
-
-def generate_y_classes(path, n_classes=2, use_off=True):
-    new_gabor_lst = []
-    if n_classes == 0:
-        gabor_lst = load_target_gabor(path)
-        for gabor in gabor_lst:
-            new_gabor_lst.append(gabor)
-    else:
-        gabor_lst = load_target_gabor(path)
-        for gabor in gabor_lst:
-            if use_off:
-                offset = 180 / (n_classes * 2)
-                new_gabor = (gabor + 90 + offset) % 180
-                new_gabor = np.floor(new_gabor / (180 / n_classes))
-                new_gabor_lst.append(np.minimum(new_gabor, n_classes-1))
-            else:
-                new_gabor = np.floor((gabor + 90) / (180 / n_classes))
-                new_gabor_lst.append(np.minimum(new_gabor, n_classes-1))
-    return new_gabor_lst
-
-def generate_y(behavior_subj, n_trials, n_train=400, n_test=100, n_classes=2, use_off=True):
-    y = []
-    for i in range(n_trials):
-        y_path = "../../../../MEG/Behaviour/" + behavior_lst[behavior_subj] + "_block%s_data.mat" % (i + 1)
-        y += generate_y_classes(y_path, n_classes=n_classes, use_off=use_off)
-        
-    y = np.array(y)
-    y_train, y_test = y[:n_train], y[n_train:n_train+n_test]
-    return y_train, y_test
 
 def gabor_loss(y_true, y_pred):
     cos_diff_orig = K.cos(2 * np.pi * (y_pred / 360)) - K.cos(2 * np.pi * (y_true / 360))
@@ -199,7 +159,7 @@ class DenseSlidingModel(object):
     def fit(self, X, y):
         X, y = np.asarray(X), np.asarray(y)
         for i in range(self.n_timesteps):
-            self.models[i].fit(X, y, epochs=self.n_epochs, batch_size=10)
+            self.models[i].fit(X[:, i], y, epochs=self.n_epochs, batch_size=10)
         return self
     
     def predict(self, X):
@@ -213,11 +173,28 @@ class DenseSlidingModel(object):
         for i in range(self.n_timesteps):
             _, accuracy = self.models[i].evaluate(X[:, i], y)
             accuracies.append(accuracy)
-        return accuracy
+        return accuracies
 
     def cross_validate(self, X, y):
         # TODO: cross validation
-        pass
+        kfold = KFold(n_splits=5, shuffle=True)
+
+        accuracies = []
+
+        for train, test in kfold.split(X, y):
+            X_train, X_test = X[train], X[test]
+            y_train, y_test = y[train], y[test]
+
+            split_accuracies = []
+            for i in range(self.n_timesteps):
+                self.models[i].fit(X_train[:, i], y_train, batch_size=10)
+                _, accuracy = self.models[i].evaluate(X_test[:, i], y_test)
+                split_accuracies.append(accuracy)
+            
+            accuracies.append(split_accuracies)
+        accuracies = np.array(accuracies)
+        return accuracies.mean(0)
+            
 
 
 class LogisticSlidingModel(object):

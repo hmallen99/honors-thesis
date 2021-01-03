@@ -7,20 +7,25 @@ KO
 MF
 MK
 NNo
-
-Need to analyze:
 DI
 JL
 NN
 HN
 
-Need to BEM:
-SoM
+Analysis
 
-Run recon-all:
+Second BEM
+
+Need to coreg:
+SoM
 TE
+
+Need to BEM:
 VA
 YMi
+
+Run recon-all:
+
 RS
 
 
