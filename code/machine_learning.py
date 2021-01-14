@@ -226,6 +226,20 @@ class LogisticSlidingModel(object):
         np.save("%s_k_best" % subj, features)
         return features
 
+    def plot_weights_stc(self, subj, vertices):
+        filters = get_coef(self.model, "patterns_", inverse_transform=True)
+        stc_feat = mne.SourceEstimate(np.abs(filters[:, -1, :]), vertices=vertices, 
+                                        tmin=0, tstep=0.025, subject=subj)
+        for i in np.arange(0, 0.39, 0.025):
+            brain = stc_feat.plot(views=['lat'], transparent=True, initial_time=i, 
+                                    time_unit='s', subjects_dir="/usr/local/freesurfer/subjects")
+
+            brain.save_image("../Figures/weights/%s_%.3fweights.png" % (subj, i))
+            brain.close()
+
+
+
+
 
 class SVMSlidingModel(object):
     def __init__(self, k=200, C=1):

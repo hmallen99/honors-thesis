@@ -13,21 +13,19 @@ NN
 HN
 
 Analysis
+SoM
+TE
 
 Second BEM
 
 Need to coreg:
-SoM
-TE
-
-Need to BEM:
 VA
 YMi
-
-Run recon-all:
-
 RS
 
+Need to BEM:
+
+Run recon-all:
 
 save for later:
 YY

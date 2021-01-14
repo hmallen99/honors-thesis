@@ -5,6 +5,7 @@ import numpy as np
 import source_localization as srcl
 import MEG_analysis as meg
 import machine_learning as ml
+import serial_dependence as sd
 import load_data as ld
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
@@ -60,7 +61,7 @@ def save_main_figs(subj):
 
 
 def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=False,
-                n_train=400, n_test=100):
+                n_train=400, n_test=100, previous=False):
     """
     Runs the full ML pipeline for behavior_subj
 
@@ -77,14 +78,16 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
     # Train Model with Epoch data
     if data == "epochs":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test, 
-                                                        n_classes=n_classes, use_off=True, data=data)
+                                                        n_classes=n_classes, use_off=True, data=data,
+                                                        previous=previous)
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.1, l1_ratio=0.95)
         figure_label = "epochs"
 
     # Train Model with Source Estimate data
     if data == "stc":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test,
-                                                        n_classes=n_classes, use_off=True, data=data)
+                                                        n_classes=n_classes, use_off=True, data=data,
+                                                        previous=previous)
         model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
         figure_label = "source"
 
@@ -99,7 +102,9 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
     elif mode == "evaluate":
         figure_label += "_test"
         model.fit(X_train, y_train)
-        model.get_features(behavior_subj, 9)
+        if data == "stc":
+            vertices = ld.get_vertices(behavior_subj)
+            model.plot_weights_stc(subj, vertices)
         results = model.evaluate(X_test, y_test)
         
     if data == "stc" or data == "epochs":
@@ -107,58 +112,13 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
 
     return results
 
-def analyze_sd(subj):
-    kfold = KFold(n_splits=5)
-
-    _, labels = ld.load_behavior(subj)
-    labels = labels[0, :500]
-    diffs = [0]
-    for i in range(1, 500):
-        ors_diff = np.abs(labels[i-1] - labels[i])
-        diffs.append(ors_diff)
-
-    diffs = np.array(diffs)
-
-    bins = {}
-    for i in range(18):
-        bins[i] = []
-
-    X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
-    for train, test in kfold.split(X):
-        X_train, X_test = X[train], X[test]
-        y_train, y_test = y[train], y[test]
-        #model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=1000, C=0.05, l1_ratio=0.95)
-        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.1, l1_ratio=0.95)
-        model.fit(X_train, y_train)
-        pred = model.predict(X_test)
-        split_diffs = diffs[test]
-        for i in range(100):
-            acc = 0
-            for j in range(16):
-                if pred[i][j] == y_test[i]:
-                    acc += 1
-            acc /= 16
-
-            bin_idx = split_diffs[i] // 10
-            bins[bin_idx].append(acc)
-
-    bin_accuracies = []
-    for i in range(18):
-        acc = np.mean(np.array(bins[i]))
-        bin_accuracies.append(acc)
-
-    plt.bar(np.arange(18), bin_accuracies)
-    plt.savefig("../Figures/SD/sd_accuracy_%s.png" % subj)
-    plt.clf()
-    return bins
-
-def analyze_sd_all_subjects():
+def analyze_sd_all_subjects(tmin=0, tmax=16):
     bins = {}
     for i in range(18):
         bins[i] = []
 
     for subj in meg_subj_lst:
-        subj_bins = analyze_sd(subj)
+        subj_bins = sd.analyze_selectivity(subj, tmin=tmin, tmax=tmax)
         for i in range(18):
             bins[i].extend(subj_bins[i])
 
@@ -167,17 +127,17 @@ def analyze_sd_all_subjects():
         accuracies[i] = np.mean(np.array(bins[i]))
 
     plt.bar(np.arange(18), accuracies)
-    plt.savefig("../Figures/SD/sd_accuracy_all.png")
+    plt.savefig("../Figures/SD/sd_accuracy_all_%d_%d.png" % (tmin, tmax))
     plt.clf()
     return
 
     
 
-def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=400, n_test=100):
+def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=400, n_test=100, previous=False):
     training_results = []
     for subject in meg_subj_lst:
         result = run_subject(subject, data=data, mode=mode, permutation_test=permutation_test,
-                            n_train=n_train, n_test=n_test,)
+                            n_train=n_train, n_test=n_test, previous=previous)
         training_results.append(result)
     
     training_error = np.std(np.array(training_results), axis=0)
@@ -189,9 +149,11 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    #run_all_subjects(data="epochs")
+    #run_all_subjects(data="stc", mode="evaluate")
     #run_all_subjects(data="epochs", permutation_test=True)
     analyze_sd_all_subjects()
+    analyze_sd_all_subjects(tmin=6, tmax=7)
+    analyze_sd_all_subjects(tmin=5, tmax=9)
     return 0
 
 
