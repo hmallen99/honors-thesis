@@ -6,9 +6,9 @@ import load_data as ld
 import machine_learning as ml
 import matplotlib.pyplot as plt
 
-def get_diffs(subj):
+def get_diffs(subj, n=500):
     _, labels = ld.load_behavior(subj)
-    labels = labels[0, :500]
+    labels = labels[0, :n]
     diffs = [0]
     for i in range(1, 500):
         ors_diff = np.abs(labels[i-1] - labels[i])
@@ -91,37 +91,34 @@ def analyze_bias(subj, tmin, tmax):
     return bins
 
 def split_half_analysis(subj):
-    X, X_test, y, y_test = ld.load_data(subj, data="epochs", n_train=500, n_test=100)
+    X, X_test, y, y_test = ld.load_data(subj, data="epochs", n_train=400, n_test=200)
     X_close, y_close = [], []
     X_far, y_far = [], []
 
-    diffs = get_diffs(subj)
+    diffs = get_diffs(subj, n=600)
+    diffs = diffs[-200:]
 
-    for i in range(500):
+    for i in range(200):
         if diffs[i] < 45 or diffs[i] >= 135 :
-            X_close.append(X[i])
-            y_close.append(y[i])
+            X_close.append(X_test[i])
+            y_close.append(y_test[i])
         else:
-            X_far.append(X[i])
-            y_far.append(y[i])
+            X_far.append(X_test[i])
+            y_far.append(y_test[i])
 
     X_close, y_close = np.array(X_close), np.array(y_close)
     X_far, y_far = np.array(X_far), np.array(y_far)
 
-    close_model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.1, l1_ratio=0.95)
-    close_model.fit(X_close, y_close)
-    close_pred = close_model.evaluate(X_test, y_test)
-    plt.plot(np.arange(0, 0.4, 0.025), close_pred)
-    plt.ylim((0.2, 0.4))
-    plt.savefig('../Figures/SD/split_half/split_half_close_%s.png' % subj)
-    plt.clf()
+    model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.1, l1_ratio=0.95)
+    model.fit(X, y)
+    close_pred = model.evaluate(X_close, y_close)
+    far_pred = model.evaluate(X_far, y_far)
 
-    far_model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.1, l1_ratio=0.95)
-    far_model.fit(X_far, y_far)
-    far_pred = far_model.evaluate(X_test, y_test)
-    plt.plot(np.arange(0, 0.4, 0.025), far_pred)
+    plt.plot(np.arange(0, 0.4, 0.025), close_pred, label="close")
+    plt.plot(np.arange(0, 0.4, 0.025), far_pred, label='far')
     plt.ylim((0.2, 0.4))
-    plt.savefig('../Figures/SD/split_half/split_half_far_%s.png' % subj)
+    plt.legend()
+    plt.savefig('../Figures/SD/split_half/split_half_%s.png' % subj)
     plt.clf()
 
     return close_pred, far_pred

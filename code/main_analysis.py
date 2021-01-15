@@ -112,7 +112,7 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
 
     return results
 
-def analyze_sd_all_subjects(tmin=0, tmax=16):
+def analyze_selectivity_all_subjects(tmin=0, tmax=16):
     bins = {}
     for i in range(18):
         bins[i] = []
@@ -131,6 +131,24 @@ def analyze_sd_all_subjects(tmin=0, tmax=16):
     plt.clf()
     return
 
+def split_half_analysis_all():
+    far_training_results = []
+    close_training_results = []
+    for subj in meg_subj_lst:
+        close, far = sd.split_half_analysis(subj)
+
+        close_training_results.append(close)
+        far_training_results.append(far)
+
+    close_training_results = np.array(close_training_results).mean(0)
+    far_training_results = np.array(far_training_results).mean(0)
+    
+    plt.plot(np.arange(0, 0.4, 0.025), close_training_results, label="close")
+    plt.plot(np.arange(0, 0.4, 0.025), far_training_results, label="far")
+    plt.ylim((0.2, 0.4))
+    plt.legend()
+    plt.savefig('../Figures/SD/split_half/split_half_all.png')
+    plt.clf()
     
 
 def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=400, n_test=100, previous=False):
@@ -147,13 +165,14 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
     else:
         ml.plot_results(np.linspace(0, 0.375, 16), training_results, mode + "_error", data + "_average", training_err=training_error)
 
+    return training_results, training_error
+
 
 def main():
-    #run_all_subjects(data="stc", mode="evaluate")
+    run_all_subjects(data="epochs", previous=True)
+    run_all_subjects(data="stc", previous=True)
+    split_half_analysis_all()
     #run_all_subjects(data="epochs", permutation_test=True)
-    analyze_sd_all_subjects()
-    analyze_sd_all_subjects(tmin=6, tmax=7)
-    analyze_sd_all_subjects(tmin=5, tmax=9)
     return 0
 
 
