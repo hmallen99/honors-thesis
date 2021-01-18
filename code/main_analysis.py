@@ -131,6 +131,19 @@ def analyze_selectivity_all_subjects(tmin=0, tmax=16):
     plt.clf()
     return
 
+def analyze_bias_all_subjects(tmin=0, tmax=16):
+    biases = []
+    diffs = []
+    for subj in meg_subj_lst:
+        bins = sd.analyze_bias(subj, tmin, tmax)
+        diffs.extend(bins[:, 0])
+        biases.extend(bins[:, 1])
+
+    plt.scatter(diffs, biases)
+    plt.savefig("../Figures/SD/bias/sd_accuracy_all_%d_%d.png" % (tmin, tmax))
+    plt.clf()
+    return
+
 def split_half_analysis_all():
     far_training_results = []
     close_training_results = []
@@ -169,9 +182,12 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    run_all_subjects(data="epochs", previous=True)
-    run_all_subjects(data="stc", previous=True)
-    split_half_analysis_all()
+    #run_all_subjects(data="epochs", previous=True)
+    #run_all_subjects(data="stc", previous=True)
+    #split_half_analysis_all()
+    analyze_bias_all_subjects()
+    analyze_bias_all_subjects(tmin=6, tmax=7)
+    analyze_bias_all_subjects(tmin=5, tmax=9)
     #run_all_subjects(data="epochs", permutation_test=True)
     return 0
 

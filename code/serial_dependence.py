@@ -88,6 +88,7 @@ def analyze_bias(subj, tmin, tmax):
     bins = np.array(bins)
     plt.scatter(bins[:, 0], bins[:, 1])
     plt.savefig("../Figures/SD/bias/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
+    plt.clf()
     return bins
 
 def split_half_analysis(subj):
