@@ -1,6 +1,7 @@
 import numpy as np
 import mne
 import sklearn
+from source_localization import morph_to_fsaverage
 import matplotlib.pyplot as plt
 
 from scipy.io import loadmat
@@ -45,6 +46,8 @@ new_beh_lst = {
     "NN": 3,
     "JL": 9,
     "DI": 16,
+    "SoM": 2,
+    "TE": 17,
 }
 
 def load_behavioral_data(path):
@@ -230,13 +233,21 @@ class LogisticSlidingModel(object):
         filters = get_coef(self.model, "patterns_", inverse_transform=True)
         stc_feat = mne.SourceEstimate(np.abs(filters[:, -1, :]), vertices=vertices, 
                                         tmin=0, tstep=0.025, subject=subj)
+
+        stc_feat = morph_to_fsaverage(stc_feat, subj)
         for i in np.arange(0, 0.39, 0.025):
-            brain = stc_feat.plot(views=['lat'], transparent=True, initial_time=i, 
-                                    time_unit='s', subjects_dir="/usr/local/freesurfer/subjects")
+            brain = stc_feat.plot(views="flat", transparent=True, initial_time=i, hemi="both",
+                                    time_unit='s', subjects_dir="/usr/local/freesurfer/subjects", surface="flat")
 
             brain.save_image("../Figures/weights/%s_%.3fweights.png" % (subj, i))
             brain.close()
 
+    def plot_weights_epochs(self, subj, epochs):
+        patterns = get_coef(self.model, "patterns_", inverse_transform=True)
+        evoked = mne.EvokedArray(patterns[:, -1, :], epochs.info, tmin=epochs.tmin)
+        evoked.plot_topomap(title="%s weights" % subj, time_unit='s', times=np.arange(0,0.39, 0.025))
+        plt.savefig('../Figures/weights/%s_epochs.png' % subj)
+        plt.clf()
 
 
 

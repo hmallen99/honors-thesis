@@ -38,6 +38,8 @@ aligned_dir = {
     "NN": "NN-aligned",
     "JL": "JL-aligned",
     "DI": "DI-aligned",
+    "SoM": "SoM-aligned",
+    "TE": "TE-aligned",
 }
 
 def save_main_figs(subj):
@@ -105,6 +107,9 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
         if data == "stc":
             vertices = ld.get_vertices(behavior_subj)
             model.plot_weights_stc(subj, vertices)
+        elif data == "epochs":
+            epochs = ld.get_epochs(behavior_subj)
+            model.plot_weights_epochs(subj, epochs)
         results = model.evaluate(X_test, y_test)
         
     if data == "stc" or data == "epochs":
@@ -182,12 +187,12 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    #run_all_subjects(data="epochs", previous=True)
+    run_all_subjects(data="stc", mode="evaluate")
     #run_all_subjects(data="stc", previous=True)
     #split_half_analysis_all()
-    analyze_bias_all_subjects()
-    analyze_bias_all_subjects(tmin=6, tmax=7)
-    analyze_bias_all_subjects(tmin=5, tmax=9)
+    #analyze_bias_all_subjects()
+    #analyze_bias_all_subjects(tmin=6, tmax=7)
+    #analyze_bias_all_subjects(tmin=5, tmax=9)
     #run_all_subjects(data="epochs", permutation_test=True)
     return 0
 

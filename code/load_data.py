@@ -18,6 +18,8 @@ new_beh_lst = {
     "NN": 3,
     "JL": 9,
     "DI": 16,
+    "SoM": 2,
+    "TE": 17,
 }
 
 aligned_dir = {
@@ -33,6 +35,8 @@ aligned_dir = {
     "NN": "NN-aligned",
     "JL": "JL-aligned",
     "DI": "DI-aligned",
+    "SoM": "SoM-aligned",
+    "TE": "TE-aligned",
 }
 
 def load_y(subj, n=500, n_classes=2, use_off=True):
@@ -131,6 +135,24 @@ def get_vertices(behavior_subj):
     stc = next(stc_epoch)
 
     return stc.vertices
+
+def get_epochs(behavior_subj):
+    folder_dict = meg.get_folder_dict()
+    subj = aligned_dir[behavior_subj]
+    meg_dir = meg.meg_locations[behavior_subj]
+
+    # Collect Data
+    epochs, _ = meg.get_processed_meg_data(subj, folder_dict, meg_dir)
+
+    bad = []
+    for i in range(len(epochs.events)):
+        if epochs.events[i][1] != 0:
+            bad += [i]
+
+    epochs.drop(bad)
+    epochs.load_data().resample(40)
+    meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0, 0.4, False)
+    return meg_epochs
 
 
 def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, data="stc", mode="sklearn", previous=False):
