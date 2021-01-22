@@ -17,6 +17,33 @@ def get_diffs(subj, n=500):
     diffs = np.array(diffs)
     return diffs
 
+def calc_relative_orientation(x):
+    if np.abs(x) > 90:
+        x = x - (np.sign(x) * 180)
+        return x
+    return x
+
+def analyze_serial_dependence(subj, n=500):
+    res, tgt = ld.load_behavior(subj)
+    res, tgt = res[0, :n], tgt[0, :n]
+    rel_ors = [0]
+    first_err = calc_relative_orientation(res[0] - tgt[0])
+    errors = [first_err]
+    for i in range(1, n):
+        next_or = calc_relative_orientation(tgt[i] - tgt[i-1])
+        next_er = calc_relative_orientation(res[i] - tgt[i])
+        if np.abs(next_or) < 60 and np.abs(next_er) < 40:
+            rel_ors += [next_or]
+            errors += [next_er]
+
+
+    plt.scatter(rel_ors, errors)
+    plt.xlim((-60, 60))
+    plt.ylim((-40, 40))
+    plt.savefig("../Figures/SD/subj_sd/%s_sd.png" % subj)
+    plt.clf()
+    return rel_ors, errors
+
 def analyze_selectivity(subj, tmin=0, tmax=16):
     diffs = get_diffs(subj)
 

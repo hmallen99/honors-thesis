@@ -167,6 +167,32 @@ def split_half_analysis_all():
     plt.legend()
     plt.savefig('../Figures/SD/split_half/split_half_all.png')
     plt.clf()
+
+def analyze_serial_dependence_all():
+    errors = []
+    rel_ors = []
+    for subj in meg_subj_lst:
+        rel, err = sd.analyze_serial_dependence(subj)
+        errors.extend(err)
+        rel_ors.extend(rel)
+
+    bins = [[] for i in range(12)]
+
+    for i in range(len(errors)):
+        bin_idx = (rel_ors[i] + 60) // 10
+        if bin_idx == 12:
+            bin_idx = 11
+        bins[bin_idx] += [errors[i]]
+
+
+    means = [np.mean(np.array(bins[i])) for i in range(12)]
+    plt.plot(np.arange(-55, 56, 10), means, color='r')
+
+    plt.scatter(rel_ors, errors)
+    plt.xlim((-60, 60))
+    plt.ylim((-40, 40))
+    plt.savefig("../Figures/SD/subj_sd/all_sd.png")
+    plt.clf()
     
 
 def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=400, n_test=100, previous=False):
@@ -187,7 +213,8 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    run_all_subjects(data="stc", mode="evaluate")
+    analyze_serial_dependence_all()
+    #run_all_subjects(data="stc", mode="evaluate")
     #run_all_subjects(data="stc", previous=True)
     #split_half_analysis_all()
     #analyze_bias_all_subjects()
