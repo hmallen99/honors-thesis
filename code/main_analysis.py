@@ -117,34 +117,34 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
 
     return results
 
-def analyze_selectivity_all_subjects(tmin=0, tmax=16):
+def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=15):
     bins = {}
-    for i in range(18):
+    for i in range(n_bins):
         bins[i] = []
 
     for subj in meg_subj_lst:
-        subj_bins = sd.analyze_selectivity(subj, tmin=tmin, tmax=tmax)
-        for i in range(18):
+        subj_bins = sd.analyze_selectivity(subj, tmin=tmin, tmax=tmax, n_bins=n_bins)
+        for i in range(n_bins):
             bins[i].extend(subj_bins[i])
 
-    accuracies = np.zeros(18)
-    for i in range(18):
+    accuracies = np.zeros(n_bins)
+    for i in range(n_bins):
         accuracies[i] = np.mean(np.array(bins[i]))
 
-    plt.bar(np.arange(18), accuracies)
+    plt.bar(np.arange(n_bins), accuracies)
     plt.savefig("../Figures/SD/sd_accuracy_all_%d_%d.png" % (tmin, tmax))
     plt.clf()
     return
 
-def analyze_bias_all_subjects(tmin=0, tmax=16):
-    biases = []
-    diffs = []
+def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15):
+    bins = [[] for i in range(n_bins)]
     for subj in meg_subj_lst:
-        bins = sd.analyze_bias(subj, tmin, tmax)
-        diffs.extend(bins[:, 0])
-        biases.extend(bins[:, 1])
+        new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins)
+        for i in range(n_bins):
+            bins[i].extend(new_bins[i])
 
-    plt.scatter(diffs, biases)
+    bin_accuracies = [np.mean(np.array(bins[i])) for i in range(n_bins)]
+    plt.bar(np.arange(n_bins), bin_accuracies)
     plt.savefig("../Figures/SD/bias/sd_accuracy_all_%d_%d.png" % (tmin, tmax))
     plt.clf()
     return
@@ -213,13 +213,12 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    analyze_serial_dependence_all()
     #run_all_subjects(data="stc", mode="evaluate")
     #run_all_subjects(data="stc", previous=True)
     #split_half_analysis_all()
-    #analyze_bias_all_subjects()
-    #analyze_bias_all_subjects(tmin=6, tmax=7)
-    #analyze_bias_all_subjects(tmin=5, tmax=9)
+    analyze_selectivity_all_subjects()
+    analyze_selectivity_all_subjects(tmin=6, tmax=7)
+    analyze_selectivity_all_subjects(tmin=5, tmax=9)
     #run_all_subjects(data="epochs", permutation_test=True)
     return 0
 

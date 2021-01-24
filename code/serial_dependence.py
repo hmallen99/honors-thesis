@@ -6,22 +6,25 @@ import load_data as ld
 import machine_learning as ml
 import matplotlib.pyplot as plt
 
-def get_diffs(subj, n=500):
-    _, labels = ld.load_behavior(subj)
-    labels = labels[0, :n]
-    diffs = [0]
-    for i in range(1, 500):
-        ors_diff = np.abs(labels[i-1] - labels[i])
-        diffs.append(ors_diff)
 
-    diffs = np.array(diffs)
-    return diffs
 
 def calc_relative_orientation(x):
     if np.abs(x) > 90:
         x = x - (np.sign(x) * 180)
         return x
     return x
+
+def get_diffs(subj, n=500):
+    _, labels = ld.load_behavior(subj)
+    labels = labels[0, :n]
+    diffs = [0]
+    for i in range(1, n):
+        #ors_diff = np.abs(labels[i-1] - labels[i])
+        ors_diff = calc_relative_orientation(labels[i] - labels[i-1])
+        diffs.append(ors_diff + 90)
+
+    diffs = np.array(diffs)
+    return diffs    
 
 def analyze_serial_dependence(subj, n=500):
     res, tgt = ld.load_behavior(subj)
@@ -44,11 +47,11 @@ def analyze_serial_dependence(subj, n=500):
     plt.clf()
     return rel_ors, errors
 
-def analyze_selectivity(subj, tmin=0, tmax=16):
+def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=15):
     diffs = get_diffs(subj)
 
     bins = {}
-    for i in range(18):
+    for i in range(n_bins):
         bins[i] = []
 
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
@@ -69,21 +72,22 @@ def analyze_selectivity(subj, tmin=0, tmax=16):
                     acc += 1
             acc /= (tmax - tmin)
 
-            bin_idx = split_diffs[i] // 10
+            bin_width = 180 // n_bins
+            bin_idx = np.minimum(split_diffs[i] // bin_width, n_bins - 1)
             bins[bin_idx].append(acc)
 
     bin_accuracies = []
-    for i in range(18):
+    for i in range(n_bins):
         acc = np.mean(np.array(bins[i]))
         bin_accuracies.append(acc)
 
-    plt.bar(np.arange(18), bin_accuracies)
+    plt.bar(np.arange(n_bins), bin_accuracies)
     plt.savefig("../Figures/SD/selectivity/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
     plt.clf()
     return bins
 
 
-def analyze_bias(subj, tmin, tmax):
+def analyze_bias(subj, tmin, tmax, n_bins):
     # x-axis: difference between current and previous orientation (bins?)
     # y-axis: decoding bias, i.e. difference between truth and predicted value
     
@@ -91,7 +95,7 @@ def analyze_bias(subj, tmin, tmax):
 
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
 
-    bins = []
+    bins = [[] for i in range(n_bins)]
 
     kfold = KFold(n_splits=5)
     for train, test in kfold.split(X):
@@ -103,17 +107,23 @@ def analyze_bias(subj, tmin, tmax):
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
         split_diffs = diffs[test]
+        bin_size = 180 // n_bins
         for i in range(100):
+            bin_idx = (split_diffs[i]) // bin_size
+            if bin_idx >= n_bins:
+                bin_idx = n_bins - 1
             for j in range(tmin, tmax):
                 bias = pred[i][j] - y_test[i]
                 if bias == 3:
                     bias = -1
                 elif bias == -3:
                     bias = 1
-                bins.append([split_diffs[i], bias])
+                elif bias == -2:
+                    bias = 2
+                bins[bin_idx] += [bias]
 
-    bins = np.array(bins)
-    plt.scatter(bins[:, 0], bins[:, 1])
+    bin_accuracies = np.array([np.mean(np.array(bins[i])) for i in range(n_bins)])
+    plt.bar(np.arange(n_bins), bin_accuracies)
     plt.savefig("../Figures/SD/bias/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
     plt.clf()
     return bins
