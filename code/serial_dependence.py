@@ -82,8 +82,9 @@ def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=18):
         acc = np.mean(np.array(bins[i]))
         bin_accuracies.append(acc)
 
+    plt.figure(figsize=(10, 6))
     plt.bar(np.arange(n_bins), bin_accuracies)
-    plt.xticks(labels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
+    plt.xticks(ticks=np.arange(n_bins), labels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
     plt.savefig("../Figures/SD/selectivity/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
     plt.clf()
     return bins
