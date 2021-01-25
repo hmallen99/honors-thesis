@@ -136,15 +136,20 @@ def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=15):
     plt.clf()
     return
 
-def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15):
+def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=10):
     bins = [[] for i in range(n_bins)]
     for subj in meg_subj_lst:
         new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins)
         for i in range(n_bins):
             bins[i].extend(new_bins[i])
 
+    bin_width = 180 // n_bins
     bin_accuracies = [np.mean(np.array(bins[i])) for i in range(n_bins)]
+
+    plt.figure(figsize=(10, 6))
     plt.bar(np.arange(n_bins), bin_accuracies)
+    labels = np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins)
+    plt.xticks(ticks=np.arange(n_bins), labels=labels)
     plt.savefig("../Figures/SD/bias/sd_accuracy_all_%d_%d.png" % (tmin, tmax))
     plt.clf()
     return
@@ -216,9 +221,9 @@ def main():
     #run_all_subjects(data="stc", mode="evaluate")
     #run_all_subjects(data="stc", previous=True)
     #split_half_analysis_all()
-    analyze_selectivity_all_subjects()
-    analyze_selectivity_all_subjects(tmin=6, tmax=7)
-    analyze_selectivity_all_subjects(tmin=5, tmax=9)
+    analyze_bias_all_subjects()
+    analyze_bias_all_subjects(tmin=6, tmax=7)
+    analyze_bias_all_subjects(tmin=5, tmax=9)
     #run_all_subjects(data="epochs", permutation_test=True)
     return 0
 

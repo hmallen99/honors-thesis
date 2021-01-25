@@ -20,6 +20,7 @@ def get_diffs(subj, n=500):
     diffs = [0]
     for i in range(1, n):
         #ors_diff = np.abs(labels[i-1] - labels[i])
+        #diffs.append(ors_diff)
         ors_diff = calc_relative_orientation(labels[i] - labels[i-1])
         diffs.append(ors_diff + 90)
 
@@ -47,15 +48,17 @@ def analyze_serial_dependence(subj, n=500):
     plt.clf()
     return rel_ors, errors
 
-def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=15):
+def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=18):
     diffs = get_diffs(subj)
 
     bins = {}
     for i in range(n_bins):
         bins[i] = []
+    
+    bin_width = 180 // n_bins
 
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
-
+    
     kfold = KFold(n_splits=5)
     for train, test in kfold.split(X):
         X_train, X_test = X[train], X[test]
@@ -71,8 +74,6 @@ def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=15):
                 if pred[i][j] == y_test[i]:
                     acc += 1
             acc /= (tmax - tmin)
-
-            bin_width = 180 // n_bins
             bin_idx = np.minimum(split_diffs[i] // bin_width, n_bins - 1)
             bins[bin_idx].append(acc)
 
@@ -82,6 +83,7 @@ def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=15):
         bin_accuracies.append(acc)
 
     plt.bar(np.arange(n_bins), bin_accuracies)
+    plt.xticks(labels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
     plt.savefig("../Figures/SD/selectivity/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
     plt.clf()
     return bins
@@ -96,6 +98,7 @@ def analyze_bias(subj, tmin, tmax, n_bins):
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
 
     bins = [[] for i in range(n_bins)]
+    bin_width = 180 // n_bins
 
     kfold = KFold(n_splits=5)
     for train, test in kfold.split(X):
@@ -107,9 +110,9 @@ def analyze_bias(subj, tmin, tmax, n_bins):
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
         split_diffs = diffs[test]
-        bin_size = 180 // n_bins
+        
         for i in range(100):
-            bin_idx = (split_diffs[i]) // bin_size
+            bin_idx = (split_diffs[i]) // bin_width
             if bin_idx >= n_bins:
                 bin_idx = n_bins - 1
             for j in range(tmin, tmax):
@@ -120,10 +123,14 @@ def analyze_bias(subj, tmin, tmax, n_bins):
                     bias = 1
                 elif bias == -2:
                     bias = 2
+                    #continue
                 bins[bin_idx] += [bias]
 
     bin_accuracies = np.array([np.mean(np.array(bins[i])) for i in range(n_bins)])
+
+    plt.figure(figsize=(10, 6))
     plt.bar(np.arange(n_bins), bin_accuracies)
+    plt.xticks(ticks=np.arange(n_bins), labels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
     plt.savefig("../Figures/SD/bias/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
     plt.clf()
     return bins
