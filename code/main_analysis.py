@@ -23,6 +23,8 @@ meg_subj_lst = [
     "NN",
     "JL",
     "DI",
+    "TE",
+    "SoM",
 ]
 
 aligned_dir = {
@@ -139,7 +141,7 @@ def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=20):
     plt.clf()
     return
 
-def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=20):
+def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=10):
     bins = [[] for i in range(n_bins)]
     for subj in meg_subj_lst:
         new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins)
@@ -221,12 +223,12 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    run_all_subjects(data="epochs", permutation_test=False, previous=False, use_off=False)
-    run_all_subjects(data="stc", permutation_test=False, previous=False, use_off=False)
+    #run_all_subjects(data="epochs", permutation_test=False, previous=False, use_off=False)
+    #run_all_subjects(data="stc", permutation_test=False, previous=False, use_off=False)
     #split_half_analysis_all()
-    #analyze_selectivity_all_subjects()
-    #analyze_selectivity_all_subjects(tmin=6, tmax=7)
-    #analyze_selectivity_all_subjects(tmin=5, tmax=9)
+    analyze_bias_all_subjects(tmin=6, tmax=7)
+    analyze_bias_all_subjects(tmin=5, tmax=9)
+    analyze_bias_all_subjects()
     #run_all_subjects(data="epochs", permutation_test=True)
     return 0
 
