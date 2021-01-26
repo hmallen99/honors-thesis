@@ -23,8 +23,8 @@ meg_subj_lst = [
     "NN",
     "JL",
     "DI",
-    "TE",
-    "SoM",
+    #"TE",
+    #"SoM",
 ]
 
 aligned_dir = {
