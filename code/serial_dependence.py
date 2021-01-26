@@ -21,7 +21,7 @@ def get_diffs(subj, n=500):
     for i in range(1, n):
         #ors_diff = np.abs(labels[i-1] - labels[i])
         #diffs.append(ors_diff)
-        ors_diff = calc_relative_orientation(labels[i] - labels[i-1])
+        ors_diff = calc_relative_orientation(labels[i-1] - labels[i])
         diffs.append(ors_diff + 90)
 
     diffs = np.array(diffs)
@@ -34,7 +34,7 @@ def analyze_serial_dependence(subj, n=500):
     first_err = calc_relative_orientation(res[0] - tgt[0])
     errors = [first_err]
     for i in range(1, n):
-        next_or = calc_relative_orientation(tgt[i] - tgt[i-1])
+        next_or = calc_relative_orientation(tgt[i-1] - tgt[i])
         next_er = calc_relative_orientation(res[i] - tgt[i])
         if np.abs(next_or) < 60 and np.abs(next_er) < 40:
             rel_ors += [next_or]

@@ -63,7 +63,7 @@ def save_main_figs(subj):
 
 
 def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=False,
-                n_train=400, n_test=100, previous=False):
+                n_train=400, n_test=100, previous=False, use_off=True):
     """
     Runs the full ML pipeline for behavior_subj
 
@@ -80,7 +80,7 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
     # Train Model with Epoch data
     if data == "epochs":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test, 
-                                                        n_classes=n_classes, use_off=True, data=data,
+                                                        n_classes=n_classes, use_off=use_off, data=data,
                                                         previous=previous)
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.1, l1_ratio=0.95)
         figure_label = "epochs"
@@ -88,7 +88,7 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
     # Train Model with Source Estimate data
     if data == "stc":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test,
-                                                        n_classes=n_classes, use_off=True, data=data,
+                                                        n_classes=n_classes, use_off=use_off, data=data,
                                                         previous=previous)
         model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
         figure_label = "source"
@@ -117,7 +117,7 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
 
     return results
 
-def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=36):
+def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=20):
     bins = {}
     for i in range(n_bins):
         bins[i] = []
@@ -139,7 +139,7 @@ def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=36):
     plt.clf()
     return
 
-def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15):
+def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=20):
     bins = [[] for i in range(n_bins)]
     for subj in meg_subj_lst:
         new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins)
@@ -203,11 +203,11 @@ def analyze_serial_dependence_all():
     plt.clf()
     
 
-def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=400, n_test=100, previous=False):
+def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=400, n_test=100, previous=False, use_off=True):
     training_results = []
     for subject in meg_subj_lst:
         result = run_subject(subject, data=data, mode=mode, permutation_test=permutation_test,
-                            n_train=n_train, n_test=n_test, previous=previous)
+                            n_train=n_train, n_test=n_test, previous=previous, use_off=use_off)
         training_results.append(result)
     
     training_error = np.std(np.array(training_results), axis=0)
@@ -221,15 +221,12 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    #run_all_subjects(data="stc", mode="evaluate")
-    #run_all_subjects(data="epochs", permutation_test=True, previous=True)
+    run_all_subjects(data="epochs", permutation_test=False, previous=False, use_off=False)
+    run_all_subjects(data="stc", permutation_test=False, previous=False, use_off=False)
     #split_half_analysis_all()
     #analyze_selectivity_all_subjects()
     #analyze_selectivity_all_subjects(tmin=6, tmax=7)
     #analyze_selectivity_all_subjects(tmin=5, tmax=9)
-    #analyze_bias_all_subjects()
-    analyze_bias_all_subjects(tmin=6, tmax=7)
-    #analyze_bias_all_subjects(tmin=5, tmax=9)
     #run_all_subjects(data="epochs", permutation_test=True)
     return 0
 

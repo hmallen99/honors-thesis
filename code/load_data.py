@@ -173,7 +173,7 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
     epochs.drop(bad)
 
     if data == "epochs":
-        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=True, previous=previous)
+        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, previous=previous)
 
     if data == "stc":
         src, bem = srcl.get_processed_mri_data(subj, source_localization_dir)
@@ -183,7 +183,7 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
         inv_op_epoch = mne.minimum_norm.make_inverse_operator(epochs.info, fwd, cov, loose=0.2, depth=0.8)
         stc_epoch = mne.minimum_norm.apply_inverse_epochs(epochs, inv_op_epoch, 0.11, return_generator=True)
 
-        return get_stc_data(behavior_subj, stc_epoch, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=True, mode=mode, previous=previous)
+        return get_stc_data(behavior_subj, stc_epoch, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, mode=mode, previous=previous)
 
     return None
 
