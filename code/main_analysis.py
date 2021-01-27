@@ -223,12 +223,12 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    #run_all_subjects(data="epochs", permutation_test=False, previous=False, use_off=False)
+    run_all_subjects(data="epochs", permutation_test=True, previous=True)
     #run_all_subjects(data="stc", permutation_test=False, previous=False, use_off=False)
     #split_half_analysis_all()
-    analyze_bias_all_subjects(tmin=6, tmax=7)
-    analyze_bias_all_subjects(tmin=5, tmax=9)
-    analyze_bias_all_subjects()
+    #analyze_bias_all_subjects(tmin=6, tmax=7)
+    #analyze_bias_all_subjects(tmin=5, tmax=9)
+    #analyze_bias_all_subjects()
     #run_all_subjects(data="epochs", permutation_test=True)
     return 0
 
