@@ -90,7 +90,7 @@ def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=18):
     return bins
 
 
-def analyze_bias(subj, tmin, tmax, n_bins):
+def analyze_bias(subj, tmin, tmax, n_bins, normalize=False):
     # x-axis: difference between current and previous orientation (bins?)
     # y-axis: decoding bias, i.e. difference between truth and predicted value
     
@@ -102,6 +102,7 @@ def analyze_bias(subj, tmin, tmax, n_bins):
     bin_width = 180 // n_bins
 
     kfold = KFold(n_splits=5)
+    all_bias = []
     for train, test in kfold.split(X):
         X_train, X_test = X[train], X[test]
         y_train, y_test = y[train], y[test]
@@ -126,6 +127,16 @@ def analyze_bias(subj, tmin, tmax, n_bins):
                     bias = 2
                     #continue
                 bins[bin_idx] += [bias]
+                all_bias += [bias]
+
+    
+    
+    if normalize:
+        all_bias = np.array(all_bias)
+        mean_bias = np.mean(all_bias)
+        std_bias = np.linalg.norm(all_bias)
+        for i in range(n_bins):
+            bins[i] = (np.array(bins[i]) - mean_bias) / std_bias
 
     bin_accuracies = np.array([np.mean(np.array(bins[i])) for i in range(n_bins)])
 

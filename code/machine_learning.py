@@ -48,6 +48,9 @@ new_beh_lst = {
     "DI": 16,
     "SoM": 2,
     "TE": 17,
+    "VA": 10,
+    "RS": 14,
+    "YMi": 11,
 }
 
 def load_behavioral_data(path):

@@ -20,6 +20,9 @@ new_beh_lst = {
     "DI": 16,
     "SoM": 2,
     "TE": 17,
+    "VA": 10,
+    "RS": 14,
+    "YMi": 11,
 }
 
 aligned_dir = {
@@ -37,6 +40,9 @@ aligned_dir = {
     "DI": "DI-aligned",
     "SoM": "SoM-aligned",
     "TE": "TE-aligned",
+    "RS": "RS-aligned",
+    "VA": "VA-aligned",
+    "YMi": "YMi-aligned",
 }
 
 def load_y(subj, n=500, n_classes=2, use_off=True):

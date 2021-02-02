@@ -50,6 +50,9 @@ meg_locations = {
     "DI": "../../../../MEG_raw01/170807_ishikawa_SD",
     "SoM": "../../../../MEG_raw01/161101_minami_SD",
     "TE": "../../../../MEG_raw01/170807_emoto_SD",
+    "VA": "../../../../MEG_raw01/170728_alex_SD",
+    "YMi": "../../../../MEG_raw01/170731_miyauchi_SD",
+    "RS": "../../../../MEG_raw01/170804_sunami_SD",
 }
 
 def apply_ica(raw, participant):
