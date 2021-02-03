@@ -14,18 +14,27 @@ def calc_relative_orientation(x):
         return x
     return x
 
-def get_diffs(subj, n=500):
+def get_diffs(subj, n=500, shift=-1):
+    if shift == 0:
+        return np.zeros(n)
     _, labels = ld.load_behavior(subj)
     labels = labels[0, :n]
-    diffs = [0]
-    for i in range(1, n):
-        #ors_diff = np.abs(labels[i-1] - labels[i])
-        #diffs.append(ors_diff)
-        ors_diff = calc_relative_orientation(labels[i-1] - labels[i])
-        diffs.append(ors_diff + 90)
+    if shift < 0:
+        shift = shift * -1
+        diffs = [0 for i in range(shift)]
+        for i in range(shift, n):
+            ors_diff = calc_relative_orientation(labels[i-shift] - labels[i])
+            diffs.append(ors_diff + 90)
+        return np.array(diffs)
+    else:
+        diffs = []
+        for i in range(0, n-shift):
+            ors_diff = calc_relative_orientation(labels[i + shift] - labels[i])
+            diffs.append(ors_diff + 90)
+        diffs.extend([0 for i in range(shift)])
+        return np.array(diffs)
 
-    diffs = np.array(diffs)
-    return diffs    
+
 
 def analyze_serial_dependence(subj, n=500):
     res, tgt = ld.load_behavior(subj)
@@ -90,11 +99,11 @@ def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=18):
     return bins
 
 
-def analyze_bias(subj, tmin, tmax, n_bins, normalize=False):
+def analyze_bias(subj, tmin, tmax, n_bins, normalize=False, time_shift=-1, plot=False):
     # x-axis: difference between current and previous orientation (bins?)
     # y-axis: decoding bias, i.e. difference between truth and predicted value
     
-    diffs = get_diffs(subj)
+    diffs = get_diffs(subj, shift=time_shift)
 
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
 
@@ -108,7 +117,7 @@ def analyze_bias(subj, tmin, tmax, n_bins, normalize=False):
         y_train, y_test = y[train], y[test]
 
         #model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=1000, C=0.05, l1_ratio=0.95)
-        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.1, l1_ratio=0.95)
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.085, l1_ratio=0.95)
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
         split_diffs = diffs[test]
@@ -138,13 +147,14 @@ def analyze_bias(subj, tmin, tmax, n_bins, normalize=False):
         for i in range(n_bins):
             bins[i] = (np.array(bins[i]) - mean_bias) / std_bias
 
-    bin_accuracies = np.array([np.mean(np.array(bins[i])) for i in range(n_bins)])
+    if plot:
+        bin_accuracies = np.array([np.mean(np.array(bins[i])) for i in range(n_bins)])
 
-    plt.figure(figsize=(10, 6))
-    plt.bar(np.arange(n_bins), bin_accuracies)
-    plt.xticks(ticks=np.arange(n_bins), labels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
-    plt.savefig("../Figures/SD/bias/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
-    plt.clf()
+        plt.figure(figsize=(10, 6))
+        plt.bar(np.arange(n_bins), bin_accuracies)
+        plt.xticks(ticks=np.arange(n_bins), labels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
+        plt.savefig("../Figures/SD/bias/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
+        plt.clf()
     return bins
 
 def split_half_analysis(subj):

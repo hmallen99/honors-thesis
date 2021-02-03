@@ -80,16 +80,39 @@ def generate_epoch_X(epochs, n=500):
     X = meg_epochs.get_data()
     return X[:n]
 
+def shift_time_step(time_shift, X, y, n):
+    if time_shift == -1:
+        X[:-1] = X[1:]
+        idx = np.random.choice(n)
+        X[-1] = X[idx]
+        y[-1] = y[idx]
+        return X, y
+    elif time_shift == -2:
+        X[:-2] = X[2:]
+        idx = np.random.choice(n)
+        X[-1] = X[idx]
+        y[-1] = y[idx]
 
-def get_stc_data(subj, stc_epoch, n_train=400, n_test=100, n_classes=4, use_off=True, mode="sklearn", shuffle=False, previous=False):
+        idx = np.random.choice(n)
+        X[-2] = X[idx]
+        y[-2] = y[idx]
+        return X, y
+    elif time_shift == 1:
+        y[:-1] = y[1:]
+        idx = np.random.choice(n)
+        X[-1] = X[idx]
+        y[-1] = y[idx]
+        return X, y
+    else:
+        return X, y
+
+
+def get_stc_data(subj, stc_epoch, n_train=400, n_test=100, n_classes=4, use_off=True, mode="sklearn", shuffle=False, time_shift=0):
     y = load_y(subj, n=n_train+n_test, n_classes=n_classes, use_off=use_off)
     X = generate_stc_X(stc_epoch, n=n_train+n_test, mode=mode)
 
-    if previous:
-        X[:-1] = X[1:]
-        idx = np.random.choice(n_train + n_test)
-        X[-1] = X[idx]
-        y[-1] = y[idx]
+    if time_shift != 0:
+        X, y = shift_time_step(time_shift, X, y, n_train + n_test)
 
     if shuffle:
         idxs = np.arange(y.shape[0])
@@ -101,15 +124,12 @@ def get_stc_data(subj, stc_epoch, n_train=400, n_test=100, n_classes=4, use_off=
     y_train, y_test = y[:n_train], y[n_train:n_train+n_test]
     return X_train, X_test, y_train, y_test
 
-def get_epoch_data(subj, epochs, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, previous=False):
+def get_epoch_data(subj, epochs, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, time_shift=0):
     y = load_y(subj, n=n_train+n_test, n_classes=n_classes, use_off=use_off)
     X = generate_epoch_X(epochs, n=n_train+n_test)
 
-    if previous:
-        X[:-1] = X[1:]
-        idx = np.random.choice(n_train + n_test)
-        X[-1] = X[idx]
-        y[-1] = y[idx]
+    if time_shift != 0:
+        X, y = shift_time_step(time_shift, X, y, n_train + n_test)
 
     if shuffle:
         idxs = np.arange(y.shape[0])
@@ -161,7 +181,7 @@ def get_epochs(behavior_subj):
     return meg_epochs
 
 
-def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, data="stc", mode="sklearn", previous=False):
+def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, data="stc", mode="sklearn", time_shift=0):
     folder_dict = meg.get_folder_dict()
     subj = aligned_dir[behavior_subj]
     meg_dir = meg.meg_locations[behavior_subj]
@@ -179,7 +199,7 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
     epochs.drop(bad)
 
     if data == "epochs":
-        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, previous=previous)
+        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, time_shift=time_shift)
 
     if data == "stc":
         src, bem = srcl.get_processed_mri_data(subj, source_localization_dir)
@@ -189,7 +209,7 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
         inv_op_epoch = mne.minimum_norm.make_inverse_operator(epochs.info, fwd, cov, loose=0.2, depth=0.8)
         stc_epoch = mne.minimum_norm.apply_inverse_epochs(epochs, inv_op_epoch, 0.11, return_generator=True)
 
-        return get_stc_data(behavior_subj, stc_epoch, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, mode=mode, previous=previous)
+        return get_stc_data(behavior_subj, stc_epoch, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, mode=mode, time_shift=time_shift)
 
     return None
 
