@@ -135,13 +135,17 @@ def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=20):
         for i in range(n_bins):
             bins[i].extend(subj_bins[i])
 
-    accuracies = np.zeros(n_bins)
-    for i in range(n_bins):
-        accuracies[i] = np.mean(np.array(bins[i]))
+    bin_accuracies = [np.mean(np.array(bins[i])) for i in range(n_bins)]
+    bin_stds = [np.std(np.array(bins[i])) for i in range(n_bins)]
+    bin_sizes = [len(bins[i]) for i in range(n_bins)]
 
     bin_width = 180 // n_bins
     plt.figure(figsize=(10, 6))
-    plt.bar(np.arange(n_bins), accuracies)
+    plt.bar(np.arange(n_bins), bin_accuracies, yerr=bin_stds)
+
+    for i, s in enumerate(bin_sizes):
+        plt.text(i, bin_accuracies[i] + 0.01, str(s), color="blue", fontweight="bold")
+
     plt.xticks(ticks=np.arange(n_bins), labels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
     plt.savefig("../Figures/SD/selectivity/sd_accuracy_all_%d_%d.png" % (tmin, tmax))
     plt.clf()
@@ -156,10 +160,13 @@ def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=10, normalize=False, time_
 
     bin_width = 180 // n_bins
     bin_accuracies = [np.mean(np.array(bins[i])) for i in range(n_bins)]
-    bin_stds = [np.std(np.array(bins[i])) for i in range(n_bins)]
+    #bin_stds = [np.std(np.array(bins[i])) for i in range(n_bins)]
+    bin_sizes = [len(bins[i]) for i in range(n_bins)]
 
     plt.figure(figsize=(10, 6))
-    plt.bar(np.arange(n_bins), bin_accuracies, yerr=bin_stds)
+    plt.bar(np.arange(n_bins), bin_accuracies)
+    for i, s in enumerate(bin_sizes):
+        plt.text(i+.05, bin_accuracies[i] + 0.01, str(s), color="blue", fontweight="bold")
     labels = np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins)
     plt.xticks(ticks=np.arange(n_bins), labels=labels)
     plt.savefig("../Figures/SD/bias/sd_accuracy_all_%d_%d_%d.png" % (tmin, tmax, time_shift))
@@ -233,12 +240,12 @@ def main():
     #run_all_subjects(data="epochs", permutation_test=False, time_shift=-2)
 
     for i in [-1, -2, 1]:
-        analyze_bias_all_subjects(tmin=6, tmax=7, time_shift=i)
-        analyze_bias_all_subjects(tmin=5, tmax=9, time_shift=i)
-        analyze_bias_all_subjects(tmin=0, tmax=16, time_shift=i)
-        analyze_bias_all_subjects(tmin=9, tmax=11, time_shift=i)
-        analyze_bias_all_subjects(tmin=13, tmax=16, time_shift=i)
-        analyze_bias_all_subjects(tmin=1, tmax=4, time_shift=i)
+        analyze_bias_all_subjects(tmin=6, tmax=9, time_shift=i)
+        #analyze_bias_all_subjects(tmin=5, tmax=9, time_shift=i)
+        #analyze_bias_all_subjects(tmin=0, tmax=16, time_shift=i)
+        #analyze_bias_all_subjects(tmin=9, tmax=11, time_shift=i)
+        #analyze_bias_all_subjects(tmin=13, tmax=16, time_shift=i)
+        analyze_bias_all_subjects(tmin=3, tmax=5, time_shift=i)
     return 0
 
 
