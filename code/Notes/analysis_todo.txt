@@ -15,13 +15,14 @@ HN
 Analysis
 SoM
 TE
+VA
+YMi
+RS
 
 Second BEM
 
 Need to coreg:
-VA
-YMi
-RS
+
 
 Need to BEM:
 

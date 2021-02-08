@@ -8,6 +8,7 @@ from scipy.io import loadmat
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras import regularizers
 import tensorflow.keras.backend as K
 
 from sklearn.pipeline import make_pipeline, Pipeline
@@ -127,12 +128,17 @@ class CosineRNNModel(object):
 
 
 class LogisticRNNModel(object):
-    def __init__(self, n_epochs=5, n_outputs=2):
+    def __init__(self, n_epochs=5, n_classes=4, n_timesteps=16):
         self.n_epochs = n_epochs
+        self.n_classes = n_classes
+        self.n_timesteps = n_timesteps
+        self.set_model()
+
+    def set_model(self):
         self.model = keras.Sequential()
         self.model.add(layers.SimpleRNN(64, activation="relu"))
         self.model.add(layers.Dense(32, activation="relu"))
-        self.model.add(layers.Dense(n_outputs, activation="softmax"))
+        self.model.add(layers.Dense(self.n_classes, activation="softmax"))
         self.model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
 
 
@@ -148,19 +154,48 @@ class LogisticRNNModel(object):
         _, accuracy = self.model.evaluate(X, y)
         return accuracy
 
+    def cross_validate(self, X, y):
+        kfold = KFold(n_splits=5, shuffle=True)
+        y = y.flatten().astype(int)
+        y_hot = np.zeros((y.size, self.n_classes))
+        y_hot[np.arange(y.size), y] = 1
+        y = y_hot
+
+        accuracies = []
+        scale = StandardScaler()
+
+        for i in range(self.n_timesteps):
+            X[:, :, i] = scale.fit_transform(X[:, :, i])
+
+        for train, test in kfold.split(X, y):
+            X_train, X_test = X[train], X[test]
+            y_train, y_test = y[train], y[test]
+
+            self.model.fit(X_train, y_train, batch_size=40, epochs=self.n_epochs)
+            _, accuracy = self.model.evaluate(X_test, y_test)
+            accuracies.append(accuracy)
+        
+        return np.mean(np.array(accuracies))
+
 class DenseSlidingModel(object):
     def __init__(self, n_epochs=5, n_classes=2, n_timesteps=16):
         self.n_epochs = n_epochs
         self.models = []
         self.n_timesteps = n_timesteps
-        for _ in range(n_timesteps):
+        self.n_classes = n_classes
+        self.set_models()
+
+    def set_models(self):
+        self.models = []
+        for _ in range(self.n_timesteps):
             model = keras.Sequential()
-            model.add(layers.Dense(64, activation="relu"))
-            model.add(layers.Dense(32, activation="relu"))
-            model.add(layers.Dense(n_classes, activation="softmax"))
+            model.add(layers.Dense(128, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-3, l2=1e-2)))
+            model.add(layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-2, l2=1e-2)))
+            model.add(layers.Dense(32, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-2, l2=1e-2)))
+            model.add(layers.Dense(self.n_classes, activation="softmax"))
             model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
             self.models.append(model)
-
+        print("set model")
 
     def fit(self, X, y):
         X, y = np.asarray(X), np.asarray(y)
@@ -184,8 +219,18 @@ class DenseSlidingModel(object):
     def cross_validate(self, X, y):
         # TODO: cross validation
         kfold = KFold(n_splits=5, shuffle=True)
+        y = y.flatten().astype(int)
+        y_hot = np.zeros((y.size, self.n_classes))
+        y_hot[np.arange(y.size), y] = 1
+        y = y_hot
 
         accuracies = []
+        scale = StandardScaler()
+
+        for i in range(self.n_timesteps):
+            X[:, :, i] = scale.fit_transform(X[:, :, i])
+
+
 
         for train, test in kfold.split(X, y):
             X_train, X_test = X[train], X[test]
@@ -193,10 +238,13 @@ class DenseSlidingModel(object):
 
             split_accuracies = []
             for i in range(self.n_timesteps):
-                self.models[i].fit(X_train[:, i], y_train, batch_size=10)
-                _, accuracy = self.models[i].evaluate(X_test[:, i], y_test)
+                print("timestep: %d" % i)
+                self.models[i].fit(X_train[:, :, i], y_train, batch_size=5, epochs=self.n_epochs)
+                print(X_train[:, :, i].shape)
+                _, accuracy = self.models[i].evaluate(X_test[:, :, i], y_test)
                 split_accuracies.append(accuracy)
             
+            self.set_models()
             accuracies.append(split_accuracies)
         accuracies = np.array(accuracies)
         return accuracies.mean(0)

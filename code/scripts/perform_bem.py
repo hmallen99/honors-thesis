@@ -1,7 +1,8 @@
 import mne
 
 subjs = [
-    "RS",
+    "VA-aligned",
+    "YMi-aligned",
 ]
 
 for s in subjs:

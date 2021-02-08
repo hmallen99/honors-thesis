@@ -186,7 +186,6 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
     subj = aligned_dir[behavior_subj]
     meg_dir = meg.meg_locations[behavior_subj]
     source_localization_dir = "/usr/local/freesurfer/subjects"
-    n_classes = 4
 
     # Collect Data
     epochs, evoked = meg.get_processed_meg_data(subj, folder_dict, meg_dir)
