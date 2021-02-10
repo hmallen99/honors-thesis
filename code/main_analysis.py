@@ -71,7 +71,7 @@ def save_main_figs(subj):
 
 
 def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=False,
-                n_train=500, n_test=0, time_shift=0, use_off=True):
+                n_train=500, n_test=0, time_shift=0, use_off=True, n_classes=4):
     """
     Runs the full ML pipeline for behavior_subj
 
@@ -83,15 +83,14 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
     X_train, X_test = [], []
     y_train, y_test = [], []
     figure_label = "default"
-    n_classes = 4
 
     # Train Model with Epoch data
     if data == "epochs":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test, 
-                                                        n_classes=4, use_off=use_off, data=data,
-                                                        time_shift=time_shift, mode="keras")
-        #model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
-        model = ml.DenseSlidingModel(n_classes=4, n_epochs=5)
+                                                        n_classes=n_classes, use_off=use_off, data=data,
+                                                        time_shift=time_shift)
+        model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
+        #model = ml.DenseSlidingModel(n_classes=4, n_epochs=5)
         figure_label = "epochs"
 
     # Train Model with Source Estimate data
@@ -219,13 +218,32 @@ def analyze_serial_dependence_all():
     plt.ylim((-40, 40))
     plt.savefig("../Figures/SD/subj_sd/all_sd.png")
     plt.clf()
+
+def analyze_probabilities_all():
+    probabilities = np.zeros((16, 8))
+    for subj in meg_subj_lst:
+        probabilities += sd.analyze_probabilities(subj)
+
+    probabilities = probabilities / len(meg_subj_lst)
+    Xs = np.array([np.arange(0, 8) for _ in range(16)])
+    Ys = np.array([np.ones(8) * i for i in range(16)])
+
+    fig = plt.figure()
+
+    ax = fig.add_subplot(111, projection='3d')
+    surf = ax.plot_surface(Xs, Ys, probabilities, cmap="coolwarm")
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    plt.savefig("../Figures/SD/proba3D/proba3d_all")
+    plt.show()
+
+
     
 
-def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=500, n_test=0, time_shift=0, use_off=True):
+def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=500, n_test=0, time_shift=0, use_off=True, n_classes=4):
     training_results = []
     for subject in meg_subj_lst:
         result = run_subject(subject, data=data, mode=mode, permutation_test=permutation_test,
-                            n_train=n_train, n_test=n_test, time_shift=time_shift, use_off=use_off)
+                            n_train=n_train, n_test=n_test, time_shift=time_shift, use_off=use_off, n_classes=n_classes)
         training_results.append(result)
     
     training_error = np.std(np.array(training_results), axis=0)
@@ -239,7 +257,9 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    run_all_subjects(data="epochs", permutation_test=True, time_shift=0)
+    #run_all_subjects(data="epochs", permutation_test=False, time_shift=0, n_classes=8)
+    #run_all_subjects(data="epochs", permutation_test=True, time_shift=0, n_classes=8)
+    analyze_probabilities_all()
 
     """for i in [-1, -2, 1]:
         analyze_bias_all_subjects(tmin=6, tmax=9, time_shift=i)

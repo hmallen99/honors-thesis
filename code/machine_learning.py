@@ -87,7 +87,7 @@ def plot_results(time_scale, y_pred, ml_type, subj, training_err=[]):
         plt.errorbar(time_scale, y_pred, yerr=training_err)
     else:
         plt.plot(time_scale, y_pred)
-    plt.ylim((0.2, 0.4))
+    plt.ylim((0.05, 0.25))
     plt.savefig('../Figures/ML/ml_results_%s_%s.png' % (ml_type, subj))
     plt.clf()
 

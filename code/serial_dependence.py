@@ -5,6 +5,8 @@ from sklearn.model_selection import KFold
 import load_data as ld
 import machine_learning as ml
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
 
 
 
@@ -190,6 +192,50 @@ def split_half_analysis(subj):
     plt.clf()
 
     return close_pred, far_pred
+
+def analyze_probabilities(subj):
+    X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0, n_classes=8)
+
+    probabilities = np.zeros((16, 8))
+
+    kfold = KFold(n_splits=5)
+    for train, test in kfold.split(X):
+        X_train, X_test = X[train], X[test]
+        y_train, y_test = y[train], y[test]
+
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=8, k=20, C=0.085, l1_ratio=0.95)
+        model.fit(X_train, y_train)
+        pred = model.model.predict_proba(X_test)
+        print(pred.shape)
+
+        for i in range(16):
+            for j in range(X_test.shape[0]):
+                idx = int(y_test[j])
+                #new_probs = [pred[j, i, idx-k] for k in range(3, 0, -1)] + [pred[j, i, idx]] + [pred[j, i, (idx+k) % 8] for k in range(1, 5)]
+                new_probs = [pred[j, i, (idx+k) % 8] for k in range(-3, 5)]
+                new_probs = np.array(new_probs)
+                print(new_probs)
+            
+
+                probabilities[i, :] += new_probs
+                
+
+    probabilities = probabilities * (1/500)
+
+    Xs = np.array([np.arange(0, 8) for _ in range(16)])
+    Ys = np.array([np.ones(8) * i for i in range(16)])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    surf = ax.plot_surface(Xs, Ys, probabilities, cmap="coolwarm")
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    plt.savefig("../Figures/SD/proba3D/proba3d_%s" % subj)
+    plt.clf()
+    return probabilities
+
+
+        
+
 
 
 
