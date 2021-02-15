@@ -152,10 +152,10 @@ def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=15, time_shift=-1):
     plt.clf()
     return
 
-def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15, normalize=False, time_shift=-1, plot_individual=False):
+def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15, n_classes=4, normalize=False, time_shift=-1, plot_individual=False):
     bins = [[] for i in range(n_bins)]
     for subj in meg_subj_lst:
-        new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins, normalize=normalize, time_shift=time_shift, plot=plot_individual)
+        new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins, normalize=normalize, n_classes=n_classes, time_shift=time_shift, plot=plot_individual)
         for i in range(n_bins):
             bins[i].extend(new_bins[i])
 
@@ -257,9 +257,18 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    #run_all_subjects(data="epochs", permutation_test=False, time_shift=0, n_classes=8)
-    #run_all_subjects(data="epochs", permutation_test=True, time_shift=0, n_classes=8)
-    analyze_probabilities_all()
+    #run_all_subjects(permutation_test=False, time_shift=0, n_classes=8)
+    #run_all_subjects(permutation_test=True, time_shift=0, n_classes=8)
+    #sd.analyze_probabilities('AK', show_plot=True)
+    #analyze_probabilities_all()
+    #analyze_bias_all_subjects(tmin=6, tmax=9, n_classes=8, time_shift=-1)
+    #analyze_bias_all_subjects(tmin=7, tmax=8, n_classes=8, time_shift=-1)
+    #analyze_bias_all_subjects(tmin=0, tmax=16, n_classes=8, time_shift=-1)
+    #analyze_bias_all_subjects(tmin=13, tmax=16, n_classes=8, time_shift=-1)
+    #analyze_bias_all_subjects(tmin=10, tmax=11, n_classes=8, time_shift=-1)
+    analyze_bias_all_subjects(tmin=10, tmax=13, plot_individual=True, n_classes=8, time_shift=-1)
+    #analyze_bias_all_subjects(tmin=11, tmax=12, n_classes=8, time_shift=-1)
+    #analyze_bias_all_subjects(tmin=12, tmax=13, n_classes=8, time_shift=-1)
 
     """for i in [-1, -2, 1]:
         analyze_bias_all_subjects(tmin=6, tmax=9, time_shift=i)

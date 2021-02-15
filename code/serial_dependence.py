@@ -102,13 +102,13 @@ def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=18, time_shift=-1, plot=Fa
     return bins
 
 
-def analyze_bias(subj, tmin, tmax, n_bins, normalize=False, time_shift=-1, plot=False):
+def analyze_bias(subj, tmin, tmax, n_bins, n_classes=4, normalize=False, time_shift=-1, plot=False):
     # x-axis: difference between current and previous orientation (bins?)
     # y-axis: decoding bias, i.e. difference between truth and predicted value
     
     diffs = get_diffs(subj, shift=time_shift)
 
-    X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0)
+    X, _, y, _ = ld.load_data(subj, data="epochs", n_classes=n_classes, n_train=500, n_test=0)
 
     bins = [[] for i in range(n_bins)]
     bin_width = 180 // n_bins
@@ -120,7 +120,7 @@ def analyze_bias(subj, tmin, tmax, n_bins, normalize=False, time_shift=-1, plot=
         y_train, y_test = y[train], y[test]
 
         #model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=1000, C=0.05, l1_ratio=0.95)
-        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.085, l1_ratio=0.95)
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=20, C=0.085, l1_ratio=0.95)
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
         split_diffs = diffs[test]
@@ -131,17 +131,12 @@ def analyze_bias(subj, tmin, tmax, n_bins, normalize=False, time_shift=-1, plot=
                 bin_idx = n_bins - 1
             for j in range(tmin, tmax):
                 bias = pred[i][j] - y_test[i]
-                if bias == 3:
-                    bias = -1
-                elif bias == -3:
-                    bias = 1
-                elif bias == -2:
-                    bias = 2
+                bias = ((bias + (n_classes / 2)) % n_classes) - (n_classes / 2)
+                if bias == -int(n_classes / 2):
+                    bias = n_classes / 2
                     #continue
                 bins[bin_idx] += [bias]
-                all_bias += [bias]
-
-    
+                all_bias += [bias]    
     
     if normalize:
         all_bias = np.array(all_bias)
@@ -193,7 +188,7 @@ def split_half_analysis(subj):
 
     return close_pred, far_pred
 
-def analyze_probabilities(subj):
+def analyze_probabilities(subj, show_plot=False):
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0, n_classes=8)
 
     probabilities = np.zeros((16, 8))
@@ -211,7 +206,6 @@ def analyze_probabilities(subj):
         for i in range(16):
             for j in range(X_test.shape[0]):
                 idx = int(y_test[j])
-                #new_probs = [pred[j, i, idx-k] for k in range(3, 0, -1)] + [pred[j, i, idx]] + [pred[j, i, (idx+k) % 8] for k in range(1, 5)]
                 new_probs = [pred[j, i, (idx+k) % 8] for k in range(-3, 5)]
                 new_probs = np.array(new_probs)
                 print(new_probs)
@@ -230,7 +224,10 @@ def analyze_probabilities(subj):
     surf = ax.plot_surface(Xs, Ys, probabilities, cmap="coolwarm")
     fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.savefig("../Figures/SD/proba3D/proba3d_%s" % subj)
-    plt.clf()
+    if show_plot:
+        plt.show()
+    else:
+        plt.clf()
     return probabilities
 
 
