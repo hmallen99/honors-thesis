@@ -257,8 +257,8 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
 
 def main():
-    #run_all_subjects(permutation_test=False, time_shift=0, n_classes=8)
-    #run_all_subjects(permutation_test=True, time_shift=0, n_classes=8)
+    run_all_subjects(data="epochs", permutation_test=False, time_shift=0, n_classes=2)
+    run_all_subjects(data="epochs", permutation_test=True, time_shift=0, n_classes=2)
     #sd.analyze_probabilities('AK', show_plot=True)
     #analyze_probabilities_all()
     #analyze_bias_all_subjects(tmin=6, tmax=9, n_classes=8, time_shift=-1)
@@ -266,7 +266,7 @@ def main():
     #analyze_bias_all_subjects(tmin=0, tmax=16, n_classes=8, time_shift=-1)
     #analyze_bias_all_subjects(tmin=13, tmax=16, n_classes=8, time_shift=-1)
     #analyze_bias_all_subjects(tmin=10, tmax=11, n_classes=8, time_shift=-1)
-    analyze_bias_all_subjects(tmin=10, tmax=13, plot_individual=True, n_classes=8, time_shift=-1)
+    #analyze_bias_all_subjects(tmin=10, tmax=13, plot_individual=True, n_classes=8, time_shift=-1)
     #analyze_bias_all_subjects(tmin=11, tmax=12, n_classes=8, time_shift=-1)
     #analyze_bias_all_subjects(tmin=12, tmax=13, n_classes=8, time_shift=-1)
 
