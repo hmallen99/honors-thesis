@@ -74,6 +74,16 @@ def gabor_loss(y_true, y_pred):
     diff_orig = K.square(cos_diff_orig) + K.square(sin_diff_orig)
     return K.minimum(diff_flip, diff_orig)
 
+def gabor_loss2(y_true, y_pred):
+    diff = y_true - y_pred
+    diff = ((diff + 90) % 180) - 90
+    return K.mean(K.square(diff), axis=-1) + 0.01 * K.mean(K.square(y_true - y_pred))
+
+def gabor_metric(y_true, y_pred):
+    diff = y_true - y_pred
+    diff = ((diff + 90) % 180) - 90
+    return K.mean(K.square(diff), axis=-1)
+
 def calc_accuracy(y_pred, y_test):
     total = 0
     for i in range(len(y_pred)):
@@ -87,7 +97,8 @@ def plot_results(time_scale, y_pred, ml_type, subj, training_err=[]):
         plt.errorbar(time_scale, y_pred, yerr=training_err)
     else:
         plt.plot(time_scale, y_pred)
-    plt.ylim((0.05, 0.25))
+    #plt.ylim((0.05, 0.25))
+    plt.ylim((0.15, 0.35))
     plt.savefig('../Figures/ML/ml_results_%s_%s.png' % (ml_type, subj))
     plt.clf()
 
@@ -136,8 +147,8 @@ class LogisticRNNModel(object):
 
     def set_model(self):
         self.model = keras.Sequential()
-        self.model.add(layers.SimpleRNN(64, activation="relu"))
-        self.model.add(layers.Dense(32, activation="relu"))
+        self.model.add(layers.SimpleRNN(64, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-3, l2=1e-2)))
+        self.model.add(layers.Dense(32, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-3, l2=1e-2)))
         self.model.add(layers.Dense(self.n_classes, activation="softmax"))
         self.model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
 
@@ -174,16 +185,19 @@ class LogisticRNNModel(object):
             self.model.fit(X_train, y_train, batch_size=40, epochs=self.n_epochs)
             _, accuracy = self.model.evaluate(X_test, y_test)
             accuracies.append(accuracy)
+            self.set_model()
         
-        return np.mean(np.array(accuracies))
+        return [np.mean(np.array(accuracies)) for _ in range(16)]
 
 class DenseSlidingModel(object):
-    def __init__(self, n_epochs=5, n_classes=2, n_timesteps=16):
+    def __init__(self, n_epochs=5, n_classes=2, n_timesteps=16, loss="categorical_crossentropy"):
         self.n_epochs = n_epochs
         self.models = []
         self.n_timesteps = n_timesteps
         self.n_classes = n_classes
         self.set_models()
+        # This can be a function or a string
+        self.loss = loss
 
     def set_models(self):
         self.models = []
@@ -193,7 +207,7 @@ class DenseSlidingModel(object):
             model.add(layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-2, l2=1e-2)))
             model.add(layers.Dense(32, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-2, l2=1e-2)))
             model.add(layers.Dense(self.n_classes, activation="softmax"))
-            model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
+            model.compile(loss=self.loss, optimizer="adam", metrics="accuracy")
             self.models.append(model)
         print("set model")
 
@@ -248,8 +262,96 @@ class DenseSlidingModel(object):
             accuracies.append(split_accuracies)
         accuracies = np.array(accuracies)
         return accuracies.mean(0)
-            
 
+class CNNSlidingModel(DenseSlidingModel):
+    def __init__(self, input_shape, n_classes=4):
+        self.input_shape = input_shape
+        DenseSlidingModel.__init__(self, n_epochs=30, n_classes=n_classes)
+        
+
+    def set_models(self):
+        model = keras.Sequential()
+        model.add(layers.Conv3D(4, 3, activation='relu', input_shape=self.input_shape))
+        model.add(layers.Conv3D(16, 3, activation='relu'))
+        model.add(layers.Flatten())
+        model.add(layers.Dense(self.n_classes, activation='softmax'))
+        model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
+        self.model = model
+
+
+    def cross_validate(self, X, y):
+        kfold = KFold(n_splits=5, shuffle=True)
+        y = y.flatten().astype(int)
+        y_hot = np.zeros((y.size, self.n_classes))
+        y_hot[np.arange(y.size), y] = 1
+        y = y_hot
+
+        accuracies = []
+
+
+
+        for train, test in kfold.split(X, y):
+            X_train, X_test = X[train], X[test]
+            y_train, y_test = y[train], y[test]
+            
+            self.model.fit(X_train, y_train, batch_size=20)
+            _, accuracy = self.model.evaluate(X_test, y_test)
+            accuracies.append(accuracy)
+            self.set_models()
+
+        avg_acc = np.mean(accuracies)
+        return [avg_acc for i in range(16)]
+
+
+
+            
+class GaborSlidingModel(DenseSlidingModel):
+    def __init__(self):
+        DenseSlidingModel.__init__(self, n_epochs=30)
+
+    def set_models(self):
+        self.models = []
+        for _ in range(self.n_timesteps):
+            model = keras.Sequential()
+            model.add(layers.Dense(128, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-1, l2=1e-1)))
+            model.add(layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-1, l2=1e-1)))
+            model.add(layers.Dense(32, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-1, l2=1e-1)))
+            model.add(layers.Dense(1))
+            model.compile(loss=gabor_loss2, optimizer="adam", metrics=gabor_metric)
+            self.models.append(model)
+        print("set model")
+
+    def cross_validate(self, X, y):
+        kfold = KFold(n_splits=5, shuffle=True)
+        y = y.flatten()
+
+        accuracies = []
+        scale = StandardScaler()
+
+        for i in range(self.n_timesteps):
+            X[:, :, i] = scale.fit_transform(X[:, :, i])
+
+
+
+        for train, test in kfold.split(X, y):
+            X_train, X_test = X[train], X[test]
+            y_train, y_test = y[train], y[test]
+
+            split_accuracies = []
+            for i in range(self.n_timesteps):
+                print("timestep: %d" % i)
+                self.models[i].fit(X_train[:, :, i], y_train, batch_size=5, epochs=self.n_epochs)
+                print(X_train[:, :, i].shape)
+                _, accuracy = self.models[i].evaluate(X_test[:, :, i], y_test)
+                preds = self.models[i].predict(X_test[:, :, i])
+                print(y_test)
+                print(preds)
+                split_accuracies.append(accuracy)
+            
+            self.set_models()
+            accuracies.append(split_accuracies)
+        accuracies = np.array(accuracies) / 90
+        return accuracies.mean(0)
 
 class LogisticSlidingModel(object):
     def __init__(self, max_iter=100, n_classes=2, k=200, C=1, l1_ratio=0.9):
@@ -300,9 +402,6 @@ class LogisticSlidingModel(object):
         plt.savefig('../Figures/weights/%s_epochs.png' % subj)
         plt.clf()
 
-
-
-
 class SVMSlidingModel(object):
     def __init__(self, k=200, C=1):
         self.clf = Pipeline([('scaler', StandardScaler()), 
@@ -331,7 +430,6 @@ class SVMSlidingModel(object):
         features = self.model.estimators_[i].named_steps['f_classif'].get_support()
         np.save("%s_k_best" % subj, features)
         return features
-
 
 class RandomForestSlidingModel(object):
     def __init__(self, k=200, C=1):

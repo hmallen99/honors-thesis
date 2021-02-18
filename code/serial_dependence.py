@@ -36,8 +36,6 @@ def get_diffs(subj, n=500, shift=-1):
         diffs.extend([0 for i in range(shift)])
         return np.array(diffs)
 
-
-
 def analyze_serial_dependence(subj, n=500):
     res, tgt = ld.load_behavior(subj)
     res, tgt = res[0, :n], tgt[0, :n]
@@ -101,8 +99,21 @@ def analyze_selectivity(subj, tmin=0, tmax=16, n_bins=18, time_shift=-1, plot=Fa
         plt.clf()
     return bins
 
+def bias_helper(split_diffs, bin_width, pred, y_test, n_classes, n_bins, tmin, tmax, bins):
+    for i in range(len(split_diffs)):
+            bin_idx = (split_diffs[i]) // bin_width
+            if bin_idx >= n_bins:
+                bin_idx = n_bins - 1
+            for j in range(tmin, tmax):
+                bias = pred[i][j] - y_test[i]
+                bias = ((bias + (n_classes / 2)) % n_classes) - (n_classes / 2)
+                if bias == -int(n_classes / 2):
+                    bias = n_classes / 2
+                    #continue
+                bins[bin_idx] += [bias]
+    return bins
 
-def analyze_bias(subj, tmin, tmax, n_bins, n_classes=4, normalize=False, time_shift=-1, plot=False):
+def analyze_bias(subj, tmin, tmax, n_bins, n_classes=4, time_shift=-1, plot=False):
     # x-axis: difference between current and previous orientation (bins?)
     # y-axis: decoding bias, i.e. difference between truth and predicted value
     
@@ -114,36 +125,16 @@ def analyze_bias(subj, tmin, tmax, n_bins, n_classes=4, normalize=False, time_sh
     bin_width = 180 // n_bins
 
     kfold = KFold(n_splits=5)
-    all_bias = []
     for train, test in kfold.split(X):
         X_train, X_test = X[train], X[test]
         y_train, y_test = y[train], y[test]
 
-        #model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=1000, C=0.05, l1_ratio=0.95)
         model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=20, C=0.085, l1_ratio=0.95)
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
         split_diffs = diffs[test]
-        
-        for i in range(100):
-            bin_idx = (split_diffs[i]) // bin_width
-            if bin_idx >= n_bins:
-                bin_idx = n_bins - 1
-            for j in range(tmin, tmax):
-                bias = pred[i][j] - y_test[i]
-                bias = ((bias + (n_classes / 2)) % n_classes) - (n_classes / 2)
-                if bias == -int(n_classes / 2):
-                    bias = n_classes / 2
-                    #continue
-                bins[bin_idx] += [bias]
-                all_bias += [bias]    
-    
-    if normalize:
-        all_bias = np.array(all_bias)
-        mean_bias = np.mean(all_bias)
-        std_bias = np.linalg.norm(all_bias)
-        for i in range(n_bins):
-            bins[i] = (np.array(bins[i]) - mean_bias) / std_bias
+
+        bins = bias_helper(split_diffs, bin_width, pred, y_test, n_classes, n_bins, tmin, tmax, bins)
 
     if plot:
         bin_accuracies = np.array([np.mean(np.array(bins[i])) for i in range(n_bins)])
@@ -154,6 +145,59 @@ def analyze_bias(subj, tmin, tmax, n_bins, n_classes=4, normalize=False, time_sh
         plt.savefig("../Figures/SD/bias/sd_accuracy_%s_%d_%d.png" % (subj, tmin, tmax))
         plt.clf()
     return bins
+
+def analyze_bias_card_obl(subj, tmin, tmax, n_bins, time_shift=-1, plot=False):
+    # x-axis: difference between current and previous orientation (bins?)
+    # y-axis: decoding bias, i.e. difference between truth and predicted value
+    
+    diffs = get_diffs(subj, shift=time_shift)
+    n_classes = 4
+    X, _, y, _ = ld.load_data(subj, data="epochs", n_classes=n_classes, n_train=500, n_test=0)
+
+    card_bins = [[] for i in range(n_bins)]
+    obl_bins = [[] for i in range(n_bins)]
+    bin_width = 180 // n_bins
+
+    kfold = KFold(n_splits=5)
+    for train, test in kfold.split(X):
+        X_train, X_test = X[train], X[test]
+        y_train, y_test = y[train], y[test]
+
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=20, C=0.085, l1_ratio=0.95)
+        model.fit(X_train, y_train)
+
+        X_card, y_card = X_test[y_test % 2 == 0], y_test[y_test % 2 == 0]
+        X_obl, y_obl = X_test[y_test % 2 == 1], y_test[y_test % 2 == 1]
+        card_pred = model.predict(X_card)
+        obl_pred = model.predict(X_obl)
+
+        split_diffs = diffs[test]
+        card_diffs = split_diffs[y_test % 2 == 0]
+        obl_diffs = split_diffs[y_test % 2 == 1]
+        
+        card_bins = bias_helper(card_diffs, bin_width, card_pred, y_card, n_classes, n_bins, tmin, tmax, card_bins)
+        obl_bins = bias_helper(obl_diffs, bin_width, obl_pred, y_obl, n_classes, n_bins, tmin, tmax, obl_bins)
+          
+
+    if plot:
+        card_bin_accuracies = np.array([np.mean(np.array(card_bins[i])) for i in range(n_bins)])
+        obl_bin_accuracies = np.array([np.mean(np.array(obl_bins[i])) for i in range(n_bins)])
+
+        fig, axes = plt.subplots(nrows=2, ncols=1)
+        fig.set_figheight(15)
+        fig.set_figwidth(10)
+        plt.setp(axes, xticks=np.arange(n_bins), xticklabels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
+        ax1 = axes[0]
+        ax1.bar(np.arange(n_bins), card_bin_accuracies)
+        ax1.title.set_text("Cardinal")
+
+        ax2 = axes[1]
+        ax2.bar(np.arange(n_bins), obl_bin_accuracies)
+        ax2.title.set_text("Oblique")
+
+        plt.savefig("../Figures/SD/bias/sd_accuracy_card_obl_%s_%d_%d.png" % (subj, tmin, tmax))
+        plt.clf()
+    return card_bins, obl_bins
 
 def split_half_analysis(subj):
     X, X_test, y, y_test = ld.load_data(subj, data="epochs", n_train=400, n_test=200)
@@ -187,6 +231,40 @@ def split_half_analysis(subj):
     plt.clf()
 
     return close_pred, far_pred
+
+def split_half_orientation(subj):
+    X, _, y, _ = ld.load_data(subj, data="epochs", n_classes=4, n_train=500, n_test=0, shuffle=True)
+    
+
+    kfold = KFold(n_splits=5)
+    card_pred = []
+    obl_pred = []
+
+    for train, test in kfold.split(X):
+        X_train, X_test = X[train], X[test]
+        y_train, y_test = y[train], y[test]
+
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=4, k=20, C=0.1, l1_ratio=0.95)
+        model.fit(X_train, y_train)
+
+        X_card, y_card = X_test[y_test % 2 == 0], y_test[y_test % 2 == 0]
+        X_obl, y_obl = X_test[y_test % 2 == 1], y_test[y_test % 2 == 1]
+
+        card_pred.append(model.evaluate(X_card, y_card))
+        obl_pred.append(model.evaluate(X_obl, y_obl))
+
+    card_pred = np.mean(np.array(card_pred), axis=0)
+    obl_pred = np.mean(np.array(obl_pred), axis=0)
+
+
+    plt.plot(np.arange(0, 0.4, 0.025), card_pred, label="cardinal")
+    plt.plot(np.arange(0, 0.4, 0.025), obl_pred, label='oblique')
+    plt.ylim((0.2, 0.4))
+    plt.legend()
+    plt.savefig('../Figures/SD/split_half/split_half_or_%s.png' % subj)
+    plt.clf()
+
+    return card_pred, obl_pred
 
 def analyze_probabilities(subj, show_plot=False):
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0, n_classes=8)
@@ -231,7 +309,7 @@ def analyze_probabilities(subj, show_plot=False):
     return probabilities
 
 
-        
+
 
 
 

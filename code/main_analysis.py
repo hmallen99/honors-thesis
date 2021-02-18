@@ -71,7 +71,8 @@ def save_main_figs(subj):
 
 
 def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=False,
-                n_train=500, n_test=0, time_shift=0, use_off=True, n_classes=4):
+                n_train=500, n_test=0, time_shift=0, use_off=True, n_classes=4, model_data="sklearn",
+                shuffle=False):
     """
     Runs the full ML pipeline for behavior_subj
 
@@ -88,19 +89,31 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
     if data == "epochs":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test, 
                                                         n_classes=n_classes, use_off=use_off, data=data,
-                                                        time_shift=time_shift)
-        model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
-        #model = ml.DenseSlidingModel(n_classes=4, n_epochs=5)
+                                                        time_shift=time_shift, mode=model_data, shuffle=shuffle)
+        if model_data == "sklearn":
+            model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
+        elif model_data == "keras":
+            #model = ml.GaborSlidingModel()
+            model = ml.LogisticRNNModel(n_classes=n_classes)
         figure_label = "epochs"
 
     # Train Model with Source Estimate data
     if data == "stc":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test,
                                                         n_classes=n_classes, use_off=use_off, data=data,
-                                                        time_shift=time_shift)
+                                                        time_shift=time_shift, shuffle=shuffle)
         model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
         #model = ml.DenseSlidingModel()
         figure_label = "source"
+
+
+    if data == "wave":
+        X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test,
+                                                        n_classes=n_classes, use_off=use_off, data=data,
+                                                        time_shift=time_shift, shuffle=shuffle)
+        
+        model = ml.CNNSlidingModel(input_shape=X_train.shape[1:], n_classes=n_classes)
+        figure_label = "wave"
 
     if permutation_test:
         figure_label += "_permutation"
@@ -121,7 +134,7 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
             model.plot_weights_epochs(subj, epochs)
         results = model.evaluate(X_test, y_test)
         
-    if data == "stc" or data == "epochs":
+    if data == "stc" or data == "epochs" or data == "wave":
         ml.plot_results(np.linspace(0, 0.375, 16), results, figure_label, subj)
 
     return results
@@ -152,10 +165,10 @@ def analyze_selectivity_all_subjects(tmin=0, tmax=16, n_bins=15, time_shift=-1):
     plt.clf()
     return
 
-def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15, n_classes=4, normalize=False, time_shift=-1, plot_individual=False):
+def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15, n_classes=4, time_shift=-1, plot_individual=False):
     bins = [[] for i in range(n_bins)]
     for subj in meg_subj_lst:
-        new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins, normalize=normalize, n_classes=n_classes, time_shift=time_shift, plot=plot_individual)
+        new_bins = sd.analyze_bias(subj, tmin, tmax, n_bins, n_classes=n_classes, time_shift=time_shift, plot=plot_individual)
         for i in range(n_bins):
             bins[i].extend(new_bins[i])
 
@@ -174,23 +187,64 @@ def analyze_bias_all_subjects(tmin=0, tmax=16, n_bins=15, n_classes=4, normalize
     plt.clf()
     return
 
-def split_half_analysis_all():
-    far_training_results = []
-    close_training_results = []
+def analyze_bias_card_obl_all_subjects(tmin=0, tmax=16, n_bins=15, n_classes=4, time_shift=-1, plot_individual=False):
+    card_bins = [[] for i in range(n_bins)]
+    obl_bins = [[] for i in range(n_bins)]
     for subj in meg_subj_lst:
-        close, far = sd.split_half_analysis(subj)
+        new_card_bins, new_obl_bins = sd.analyze_bias_card_obl(subj, tmin, tmax, n_bins, time_shift=time_shift, plot=plot_individual)
+        for i in range(n_bins):
+            card_bins[i].extend(new_card_bins[i])
+            obl_bins[i].extend(new_obl_bins[i])
 
-        close_training_results.append(close)
-        far_training_results.append(far)
+    bin_width = 180 // n_bins
+    card_bin_accuracies = [np.mean(np.array(card_bins[i])) for i in range(n_bins)]
+    obl_bin_accuracies = [np.mean(np.array(obl_bins[i])) for i in range(n_bins)]
+    #bin_stds = [np.std(np.array(bins[i])) for i in range(n_bins)]
+    #bin_sizes = [len(card_bins[i]) for i in range(n_bins)]
 
-    close_training_results = np.array(close_training_results).mean(0)
-    far_training_results = np.array(far_training_results).mean(0)
+    fig, axes = plt.subplots(nrows=2, ncols=1)
+    fig.set_figheight(15)
+    fig.set_figwidth(10)
+    plt.setp(axes, xticks=np.arange(n_bins), xticklabels=np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins))
+    ax1 = axes[0]
+    ax1.bar(np.arange(n_bins), card_bin_accuracies)
+    ax1.title.set_text("Cardinal")
+
+    ax2 = axes[1]
+    ax2.bar(np.arange(n_bins), obl_bin_accuracies)
+    ax2.title.set_text("Oblique")
+
+    plt.savefig("../Figures/SD/bias/sd_accuracy_all_card_obl_%d_%d_%d.png" % (tmin, tmax, time_shift))
+    plt.clf()
+    return
+
+def split_half_analysis_all(mode="or_diff"):
+    func = lambda x: np.zeros(16)
+    labels = ["class1", "class2"]
+
+    if mode == "or_diff":
+        func = sd.split_half_analysis
+        labels = ["close", "far"]
+    elif mode == "or_class":
+        func = sd.split_half_orientation
+        labels = ["cardinal", "oblique"]
+
+    class2_training_results = []
+    class1_training_results = []
+    for subj in meg_subj_lst:
+        class1, class2 = func(subj)
+
+        class1_training_results.append(class1)
+        class2_training_results.append(class2)
+
+    class1_training_results = np.array(class1_training_results).mean(0)
+    class2_training_results = np.array(class2_training_results).mean(0)
     
-    plt.plot(np.arange(0, 0.4, 0.025), close_training_results, label="close")
-    plt.plot(np.arange(0, 0.4, 0.025), far_training_results, label="far")
+    plt.plot(np.arange(0, 0.4, 0.025), class1_training_results, label=labels[0])
+    plt.plot(np.arange(0, 0.4, 0.025), class2_training_results, label=labels[1])
     plt.ylim((0.2, 0.4))
     plt.legend()
-    plt.savefig('../Figures/SD/split_half/split_half_all.png')
+    plt.savefig('../Figures/SD/split_half/split_half_all_%s.png' % mode)
     plt.clf()
 
 def analyze_serial_dependence_all():
@@ -234,16 +288,15 @@ def analyze_probabilities_all():
     surf = ax.plot_surface(Xs, Ys, probabilities, cmap="coolwarm")
     fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.savefig("../Figures/SD/proba3D/proba3d_all")
-    plt.show()
+    plt.show()   
 
-
-    
-
-def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=500, n_test=0, time_shift=0, use_off=True, n_classes=4):
+def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_train=500, n_test=0, time_shift=0, use_off=True, 
+                     n_classes=4, model_data="sklearn", shuffle=False):
     training_results = []
     for subject in meg_subj_lst:
         result = run_subject(subject, data=data, mode=mode, permutation_test=permutation_test,
-                            n_train=n_train, n_test=n_test, time_shift=time_shift, use_off=use_off, n_classes=n_classes)
+                            n_train=n_train, n_test=n_test, time_shift=time_shift, use_off=use_off, 
+                            n_classes=n_classes, model_data=model_data, shuffle=shuffle)
         training_results.append(result)
     
     training_error = np.std(np.array(training_results), axis=0)
@@ -255,35 +308,14 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
     return training_results, training_error
 
-
 def main():
-    run_all_subjects(data="epochs", permutation_test=False, time_shift=0, n_classes=2)
-    run_all_subjects(data="epochs", permutation_test=True, time_shift=0, n_classes=2)
-    #sd.analyze_probabilities('AK', show_plot=True)
+    run_all_subjects(data="wave", permutation_test=False, n_classes=4, model_data="sklearn", shuffle=True)
+    run_all_subjects(data="wave", permutation_test=True, n_classes=4, model_data="sklearn", shuffle=True)
+    #run_all_subjects(data="epochs", permutation_test=True, time_shift=0, n_classes=2, model_data="sklearn", shuffle=True)
+    #sd.split_half_orientation('AK')
+    #split_half_analysis_all(mode="or_class")
     #analyze_probabilities_all()
-    #analyze_bias_all_subjects(tmin=6, tmax=9, n_classes=8, time_shift=-1)
-    #analyze_bias_all_subjects(tmin=7, tmax=8, n_classes=8, time_shift=-1)
-    #analyze_bias_all_subjects(tmin=0, tmax=16, n_classes=8, time_shift=-1)
-    #analyze_bias_all_subjects(tmin=13, tmax=16, n_classes=8, time_shift=-1)
-    #analyze_bias_all_subjects(tmin=10, tmax=11, n_classes=8, time_shift=-1)
-    #analyze_bias_all_subjects(tmin=10, tmax=13, plot_individual=True, n_classes=8, time_shift=-1)
-    #analyze_bias_all_subjects(tmin=11, tmax=12, n_classes=8, time_shift=-1)
-    #analyze_bias_all_subjects(tmin=12, tmax=13, n_classes=8, time_shift=-1)
-
-    """for i in [-1, -2, 1]:
-        analyze_bias_all_subjects(tmin=6, tmax=9, time_shift=i)
-        analyze_bias_all_subjects(tmin=7, tmax=8, time_shift=i)
-        analyze_bias_all_subjects(tmin=0, tmax=16, time_shift=i)
-        analyze_bias_all_subjects(tmin=9, tmax=11, time_shift=i)
-        analyze_bias_all_subjects(tmin=13, tmax=16, time_shift=i)
-        analyze_bias_all_subjects(tmin=3, tmax=5, time_shift=i)
-
-        analyze_selectivity_all_subjects(tmin=6, tmax=9, time_shift=i)
-        analyze_selectivity_all_subjects(tmin=7, tmax=8, time_shift=i)
-        analyze_selectivity_all_subjects(tmin=0, tmax=16, time_shift=i)
-        analyze_selectivity_all_subjects(tmin=9, tmax=11, time_shift=i)
-        analyze_selectivity_all_subjects(tmin=13, tmax=16, time_shift=i)
-        analyze_selectivity_all_subjects(tmin=3, tmax=5, time_shift=i)"""
+    #analyze_bias_card_obl_all_subjects(tmin=6, tmax=9, n_classes=8, time_shift=-1, plot_individual=True)
     return 0
 
 

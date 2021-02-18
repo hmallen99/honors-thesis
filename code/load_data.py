@@ -48,6 +48,8 @@ aligned_dir = {
 def load_y(subj, n=500, n_classes=2, use_off=True):
     y_path = "../../../../MEG/Behaviour/Sub%d_beh.mat" % new_beh_lst[subj]
     data = loadmat(y_path)["TgtOrs"]
+    if n_classes == -1:
+        return data.flatten().astype(float)[:n]
     offset = 0
     if use_off:
         offset = 180 / (n_classes * 2)
@@ -79,6 +81,16 @@ def generate_epoch_X(epochs, n=500):
     meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0, 0.4, False)
     X = meg_epochs.get_data()
     return X[:n]
+
+def generate_wave_X(epochs, n=500):
+    freqs = np.arange(5, 41, 5)
+    n_cycles = freqs / 5
+    print(freqs)
+    epochs.load_data().resample(40)
+    meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0, 1, False)
+    meg_epochs = meg_epochs.get_data()[:n]
+    meg_wavelets = mne.time_frequency.tfr_array_morlet(meg_epochs, sfreq=80, freqs=freqs, n_cycles=n_cycles, output="power")
+    return np.expand_dims(np.array(meg_wavelets), -1)
 
 def shift_time_step(time_shift, X, y, n):
     if time_shift == -1:
@@ -130,6 +142,20 @@ def get_epoch_data(subj, epochs, n_train=400, n_test=100, n_classes=4, use_off=T
 
     if time_shift != 0:
         X, y = shift_time_step(time_shift, X, y, n_train + n_test)
+
+    if shuffle:
+        idxs = np.arange(y.shape[0])
+        np.random.shuffle(idxs)
+        y = y[idxs]
+        X = X[idxs]
+
+    X_train, X_test = X[:n_train], X[n_train:n_train+n_test]
+    y_train, y_test = y[:n_train], y[n_train:n_train+n_test]
+    return X_train, X_test, y_train, y_test
+
+def get_wave_data(subj, epochs, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, time_shift=0):
+    y = load_y(subj, n=n_train+n_test, n_classes=n_classes, use_off=use_off)
+    X = generate_wave_X(epochs, n=n_train+n_test)
 
     if shuffle:
         idxs = np.arange(y.shape[0])
@@ -198,7 +224,7 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
     epochs.drop(bad)
 
     if data == "epochs":
-        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, time_shift=time_shift)
+        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, shuffle=shuffle, time_shift=time_shift)
 
     if data == "stc":
         src, bem = srcl.get_processed_mri_data(subj, source_localization_dir)
@@ -208,7 +234,10 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
         inv_op_epoch = mne.minimum_norm.make_inverse_operator(epochs.info, fwd, cov, loose=0.2, depth=0.8)
         stc_epoch = mne.minimum_norm.apply_inverse_epochs(epochs, inv_op_epoch, 0.11, return_generator=True)
 
-        return get_stc_data(behavior_subj, stc_epoch, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, mode=mode, time_shift=time_shift)
+        return get_stc_data(behavior_subj, stc_epoch, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, shuffle=shuffle, mode=mode, time_shift=time_shift)
+
+    if data == "wave":
+        return get_wave_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, shuffle=shuffle, time_shift=time_shift)
 
     return None
 
