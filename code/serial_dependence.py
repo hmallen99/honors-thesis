@@ -308,6 +308,61 @@ def analyze_probabilities(subj, show_plot=False):
         plt.clf()
     return probabilities
 
+def analyze_probabilities_bias(subj, show_plot=False, plot_individual=False, n_bins=15, t=7):
+    X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0, n_classes=8)
+
+    bin_sizes = np.zeros(n_bins)
+    bins = [np.zeros(8) for i in range(n_bins)]
+    bin_width = 180 // n_bins
+    diffs = get_diffs(subj, shift=-1)
+
+    kfold = KFold(n_splits=5)
+    for train, test in kfold.split(X):
+        X_train, X_test = X[train], X[test]
+        y_train, y_test = y[train], y[test]
+        split_diffs = diffs[test]
+
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=8, k=20, C=0.085, l1_ratio=0.95)
+        model.fit(X_train, y_train)
+        pred = model.model.predict_proba(X_test)
+        print(pred.shape)
+
+        for i in range(X_test.shape[0]):
+            idx = int(y_test[i])
+            bin_idx = split_diffs[i] // bin_width
+            if bin_idx >= n_bins:
+                bin_idx -= 1
+            new_probs = np.array([pred[i, t, (idx+k) % 8] for k in range(-3, 5)])
+            bins[bin_idx] += new_probs
+            bin_sizes[bin_idx] += 1
+                
+    bins = np.array(bins)
+    
+    bin_accuracies = bins / bin_sizes[:, None]
+    
+
+    print(bin_sizes)
+    print(bin_accuracies)
+
+    if plot_individual:
+        Xs = np.array([np.arange(0, 8) for _ in range(n_bins)])
+        labels = np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins)
+        Ys = np.array([np.ones(8) * i for i in labels])
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        surf = ax.plot_surface(Xs, Ys, bin_accuracies, cmap="coolwarm")
+        ax.set_xlabel("Classes")
+        ax.set_ylabel("Previous Orientation - Current Orientation")
+        ax.set_zlabel("Class Probability")
+        fig.colorbar(surf, shrink=0.5, aspect=5)
+        plt.savefig("../Figures/SD/proba3D/proba3d_bias_%s" % subj)
+        if show_plot:
+            plt.show()
+        else:
+            plt.clf()
+    return bins, bin_sizes
+
 
 
 

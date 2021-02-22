@@ -308,12 +308,39 @@ def run_all_subjects(data='stc', mode="cross_val", permutation_test=False, n_tra
 
     return training_results, training_error
 
+def analyze_probabilities_bias_all(n_bins=16, t=7, show_plot=False):
+    bins, bin_sizes = np.zeros((n_bins, 8)), np.zeros(n_bins)
+    for subj in meg_subj_lst:
+        new_bins, new_bin_sizes = sd.analyze_probabilities_bias(subj, n_bins=n_bins, t=t)
+        bins += new_bins
+        bin_sizes += new_bin_sizes
+
+    bin_accuracies = bins / bin_sizes[:, None]
+    bin_width = 180 // n_bins
+
+    Xs = np.array([np.arange(0, 8) for _ in range(n_bins)])
+    labels = np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins)
+    Ys = np.array([np.ones(8) * i for i in labels])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    surf = ax.plot_surface(Xs, Ys, bin_accuracies, cmap="coolwarm")
+    ax.set_xlabel("Classes")
+    ax.set_ylabel("Previous Orientation - Current Orientation")
+    ax.set_zlabel("Class Probability")
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    plt.savefig("../Figures/SD/proba3D/proba3d_bias_all_%d" % t)
+    if show_plot:
+        plt.show()
+    else:
+        plt.clf()
+
+
 def main():
-    run_all_subjects(data="wave", permutation_test=False, n_classes=4, model_data="sklearn", shuffle=True)
-    run_all_subjects(data="wave", permutation_test=True, n_classes=4, model_data="sklearn", shuffle=True)
-    #run_all_subjects(data="epochs", permutation_test=True, time_shift=0, n_classes=2, model_data="sklearn", shuffle=True)
-    #sd.split_half_orientation('AK')
-    #split_half_analysis_all(mode="or_class")
+    #run_all_subjects(data="wave", permutation_test=False, n_classes=4, model_data="sklearn", shuffle=True)
+    #run_all_subjects(data="wave", permutation_test=True, n_classes=4, model_data="sklearn", shuffle=True)
+    for i in range(0, 16):
+        analyze_probabilities_bias_all(t=i)
     #analyze_probabilities_all()
     #analyze_bias_card_obl_all_subjects(tmin=6, tmax=9, n_classes=8, time_shift=-1, plot_individual=True)
     return 0
