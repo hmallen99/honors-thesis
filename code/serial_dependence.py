@@ -308,7 +308,7 @@ def analyze_probabilities(subj, show_plot=False):
         plt.clf()
     return probabilities
 
-def analyze_probabilities_bias(subj, show_plot=False, plot_individual=False, n_bins=15, t=7):
+def analyze_probabilities_bias(subj, show_plot=False, plot2D=False, plot3D=False, n_bins=15, t=7):
     X, _, y, _ = ld.load_data(subj, data="epochs", n_train=500, n_test=0, n_classes=8)
 
     bin_sizes = np.zeros(n_bins)
@@ -339,14 +339,23 @@ def analyze_probabilities_bias(subj, show_plot=False, plot_individual=False, n_b
     bins = np.array(bins)
     
     bin_accuracies = bins / bin_sizes[:, None]
-    
 
-    print(bin_sizes)
-    print(bin_accuracies)
+    print(bin_accuracies.shape)
+    labels = np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins)
 
-    if plot_individual:
+    if plot2D:
+        plt.imshow(bin_accuracies.T)
+        plt.ylabel("Class Prediction")
+        plt.xlabel("Previous - Current Orientation")
+        plt.colorbar()
+        plt.savefig("../Figures/SD/proba2D/proba2d_bias_%s" % subj)
+        if show_plot:
+            plt.show()
+        else:
+            plt.clf()
+    if plot3D:
         Xs = np.array([np.arange(0, 8) for _ in range(n_bins)])
-        labels = np.linspace(-90 + (bin_width/2), 90 - (bin_width/2), n_bins)
+        
         Ys = np.array([np.ones(8) * i for i in labels])
 
         fig = plt.figure()

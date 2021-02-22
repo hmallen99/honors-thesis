@@ -77,7 +77,7 @@ def gabor_loss(y_true, y_pred):
 def gabor_loss2(y_true, y_pred):
     diff = y_true - y_pred
     diff = ((diff + 90) % 180) - 90
-    return K.mean(K.square(diff), axis=-1) + 0.01 * K.mean(K.square(y_true - y_pred))
+    return K.mean(K.square(diff), axis=-1) + K.mean(100 * (y_pred / 181))
 
 def gabor_metric(y_true, y_pred):
     diff = y_true - y_pred
@@ -288,6 +288,8 @@ class CNNSlidingModel(DenseSlidingModel):
 
         accuracies = []
 
+        scaler = StandardScaler()
+        print(X.shape)
 
 
         for train, test in kfold.split(X, y):
@@ -301,9 +303,6 @@ class CNNSlidingModel(DenseSlidingModel):
 
         avg_acc = np.mean(accuracies)
         return [avg_acc for i in range(16)]
-
-
-
             
 class GaborSlidingModel(DenseSlidingModel):
     def __init__(self):
