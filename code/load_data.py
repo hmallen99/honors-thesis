@@ -45,6 +45,57 @@ aligned_dir = {
     "YMi": "YMi-aligned",
 }
 
+meg_subj_lst = [
+    "KA",
+    "MF",
+    #"MK",
+    #"NNo",
+    #"KO",
+    "HHy",
+    #"HO",
+    "AK",
+    "HN",
+    "NN",
+    "JL",
+    "DI",
+    "TE",
+    "SoM",
+    "VA",
+    #"RS",
+    "YMi",
+]
+
+behavior_lst = {
+    "KA": "01amano1101/amano1101_session_20161101T132416",
+    "MF": "07fujita0131/fujita0131_session_20170131T145759",
+    "MK":  "12kawaguchi0731/kawaguchi0731_session_20170731T153637",
+    "NNo": "19noguchi0808/noguchi0808_session_20170808T102813",
+    "KO": "04okahashi1101/okahashi1101_session_20161101T161904",
+    "HHy": "18hashidume0807/hashidume0807_session_20170807T162259",
+    "HO": "06oishi0131/oishi0131_session_20170131T134216",
+    "AK": "05koizumi0131/koizumi0131_session_20170131T110526",
+}
+
+meg_locations = {
+    "KA": "../../../../MEG_raw01/161101_amano_SD",
+    "MF": "../../../../MEG_raw01/170131_fujita_SD",
+    "MK": "../../../../MEG_raw01/170731_kawaguchi_SD",
+    "NNo": "../../../../MEG_raw01/170808_noguchi_SD",
+    "KO": "../../../../MEG_raw01/161101_okahashi_SD",
+    "HHy": "../../../../MEG_raw01/170807_hashizume_SD",
+    "HO": "../../../../MEG_raw01/170131_oishi_SD",
+    "AK": "../../../../MEG_raw01/170131_koizumi_SD",
+    "HN": "../../../../MEG_raw01/170808_nakamura_SD",
+    "NN": "../../../../MEG_raw01/161101_nakagawa_SD",
+    "JL": "../../../../MEG_raw01/170728_lyu_SD",
+    "DI": "../../../../MEG_raw01/170807_ishikawa_SD",
+    "SoM": "../../../../MEG_raw01/161101_minami_SD",
+    "TE": "../../../../MEG_raw01/170807_emoto_SD",
+    "VA": "../../../../MEG_raw01/170728_alex_SD",
+    "YMi": "../../../../MEG_raw01/170731_miyauchi_SD",
+    "RS": "../../../../MEG_raw01/170804_sunami_SD",
+}
+
 def load_y(subj, n=500, n_classes=2, use_off=True):
     y_path = "../../../../MEG/Behaviour/Sub%d_beh.mat" % new_beh_lst[subj]
     data = loadmat(y_path)["TgtOrs"]

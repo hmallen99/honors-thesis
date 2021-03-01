@@ -25,11 +25,13 @@ Need to coreg:
 
 
 Need to BEM:
+YY
 
 Run recon-all:
-
-save for later:
-YY
 TOu
 KY
 HY
+
+
+save for later:
+

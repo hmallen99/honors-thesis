@@ -3,6 +3,7 @@ import numpy as np
 import mne
 import re
 import matplotlib.pyplot as plt
+from load_data import meg_locations
 
 
 ch_exclude = ['MEG0834','MEG0835','MEG0836','MEG0844','MEG0845','MEG0846','MEG2914','MEG2915','MEG2916','MEG2924','MEG2925',
@@ -34,26 +35,6 @@ ica_exclude_picks = [
     [0, 3],
     [0]
 ]
-
-meg_locations = {
-    "KA": "../../../../MEG_raw01/161101_amano_SD",
-    "MF": "../../../../MEG_raw01/170131_fujita_SD",
-    "MK": "../../../../MEG_raw01/170731_kawaguchi_SD",
-    "NNo": "../../../../MEG_raw01/170808_noguchi_SD",
-    "KO": "../../../../MEG_raw01/161101_okahashi_SD",
-    "HHy": "../../../../MEG_raw01/170807_hashizume_SD",
-    "HO": "../../../../MEG_raw01/170131_oishi_SD",
-    "AK": "../../../../MEG_raw01/170131_koizumi_SD",
-    "HN": "../../../../MEG_raw01/170808_nakamura_SD",
-    "NN": "../../../../MEG_raw01/161101_nakagawa_SD",
-    "JL": "../../../../MEG_raw01/170728_lyu_SD",
-    "DI": "../../../../MEG_raw01/170807_ishikawa_SD",
-    "SoM": "../../../../MEG_raw01/161101_minami_SD",
-    "TE": "../../../../MEG_raw01/170807_emoto_SD",
-    "VA": "../../../../MEG_raw01/170728_alex_SD",
-    "YMi": "../../../../MEG_raw01/170731_miyauchi_SD",
-    "RS": "../../../../MEG_raw01/170804_sunami_SD",
-}
 
 def apply_ica(raw, participant):
     print("Executing ICA")

@@ -23,36 +23,7 @@ from mne.minimum_norm import apply_inverse_epochs, read_inverse_operator
 from mne.decoding import (cross_val_multiscore, LinearModel, SlidingEstimator,
                           get_coef, Vectorizer, Scaler)
 
-behavior_lst = {
-    "KA": "01amano1101/amano1101_session_20161101T132416",
-    "MF": "07fujita0131/fujita0131_session_20170131T145759",
-    "MK":  "12kawaguchi0731/kawaguchi0731_session_20170731T153637",
-    "NNo": "19noguchi0808/noguchi0808_session_20170808T102813",
-    "KO": "04okahashi1101/okahashi1101_session_20161101T161904",
-    "HHy": "18hashidume0807/hashidume0807_session_20170807T162259",
-    "HO": "06oishi0131/oishi0131_session_20170131T134216",
-    "AK": "05koizumi0131/koizumi0131_session_20170131T110526",
-}
-
-new_beh_lst = {
-    "KA": 1,
-    "MF": 7,
-    "MK": 12,
-    "NNo": 19,
-    "KO": 4,
-    "HHy": 18,
-    "HO": 6,
-    "AK": 5,
-    "HN": 21,
-    "NN": 3,
-    "JL": 9,
-    "DI": 16,
-    "SoM": 2,
-    "TE": 17,
-    "VA": 10,
-    "RS": 14,
-    "YMi": 11,
-}
+from load_data import new_beh_lst, behavior_lst
 
 def load_behavioral_data(path):
     return loadmat(path)
@@ -97,8 +68,8 @@ def plot_results(time_scale, y_pred, ml_type, subj, training_err=[]):
         plt.errorbar(time_scale, y_pred, yerr=training_err)
     else:
         plt.plot(time_scale, y_pred)
-    #plt.ylim((0.05, 0.25))
-    plt.ylim((0.15, 0.35))
+    plt.ylim((0.15, 0.45))
+    #plt.ylim((0.15, 0.35))
     plt.savefig('../Figures/ML/ml_results_%s_%s.png' % (ml_type, subj))
     plt.clf()
 

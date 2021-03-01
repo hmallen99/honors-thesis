@@ -9,46 +9,8 @@ import serial_dependence as sd
 import load_data as ld
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
+from load_data import meg_subj_lst, aligned_dir
 
-meg_subj_lst = [
-    "KA",
-    "MF",
-    #"MK",
-    #"NNo",
-    #"KO",
-    "HHy",
-    #"HO",
-    "AK",
-    "HN",
-    "NN",
-    "JL",
-    "DI",
-    "TE",
-    "SoM",
-    "VA",
-    #"RS",
-    "YMi",
-]
-
-aligned_dir = {
-    "KA": "KA-aligned",
-    "MF": "MF-aligned",
-    "MK":  "MK-aligned",
-    "NNo": "NNo-4",
-    "KO": "KO-aligned",
-    "HHy": "HHy-aligned",
-    "HO": "HO-aligned",
-    "AK": "AK-aligned",
-    "HN": "HN-aligned",
-    "NN": "NN-aligned",
-    "JL": "JL-aligned",
-    "DI": "DI-aligned",
-    "SoM": "SoM-aligned",
-    "TE": "TE-aligned",
-    "RS": "RS-aligned",
-    "VA": "VA-aligned",
-    "YMi": "YMi-aligned",
-}
 
 def save_main_figs(subj):
     erf_fig = plt.imread("../Figures/residuals/%s_residual_erf.png" % aligned_dir[subj])
@@ -349,10 +311,10 @@ def analyze_probabilities_bias_all(n_bins=15, t=7, show_plot=False, plot2D=True,
 
 
 def main():
-    #run_all_subjects(data="wave", permutation_test=False, n_classes=4, model_data="sklearn", shuffle=True)
+    run_all_subjects(data="wave", permutation_test=False, n_classes=4, model_data="sklearn", shuffle=True)
     #run_all_subjects(data="wave", permutation_test=True, n_classes=4, model_data="sklearn", shuffle=True)
-    for i in range(0, 16):
-        analyze_probabilities_bias_all(t=i)
+    #for i in range(0, 16):
+    #    analyze_probabilities_bias_all(t=i)
     #analyze_probabilities_bias_all()
     #analyze_bias_card_obl_all_subjects(tmin=6, tmax=9, n_classes=8, time_shift=-1, plot_individual=True)
     return 0
