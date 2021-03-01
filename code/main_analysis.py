@@ -8,8 +8,9 @@ import machine_learning as ml
 import serial_dependence as sd
 import load_data as ld
 import matplotlib.pyplot as plt
+import inverted_encoding as ie
 from sklearn.model_selection import KFold
-from load_data import meg_subj_lst, aligned_dir
+from file_lists import meg_subj_lst, aligned_dir
 
 
 def save_main_figs(subj):
@@ -30,7 +31,6 @@ def save_main_figs(subj):
 
     plt.savefig("../Figures/combined/%s_combined.png" % aligned_dir[subj], dpi=700)
     plt.clf()
-
 
 def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=False,
                 n_train=500, n_test=0, time_shift=0, use_off=True, n_classes=4, model_data="sklearn",
@@ -55,7 +55,6 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
         if model_data == "sklearn":
             model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
         elif model_data == "keras":
-            #model = ml.GaborSlidingModel()
             model = ml.LogisticRNNModel(n_classes=n_classes)
         figure_label = "epochs"
 
@@ -65,7 +64,6 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
                                                         n_classes=n_classes, use_off=use_off, data=data,
                                                         time_shift=time_shift, shuffle=shuffle)
         model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
-        #model = ml.DenseSlidingModel()
         figure_label = "source"
 
 
@@ -309,9 +307,42 @@ def analyze_probabilities_bias_all(n_bins=15, t=7, show_plot=False, plot2D=True,
         else:
             plt.clf()
 
+def run_all_iem(n_classes=8, permutation_test=False):
+    score_lst = np.zeros(16)
+    count = 0
+    for subj in meg_subj_lst:
+        scores = ie.run_iem_subject(subj, n_classes=n_classes, permutation_test=permutation_test)
+        score_lst += scores
+        count += 1
+    
+    name = "IEM_cv"
+    if permutation_test:
+        name += "_permutation"
+    score_lst /= count
+    ml.plot_results(np.arange(16), score_lst, name, "all", ymin=0.075, ymax=0.175)
+
+def run_all_iem3d(n_classes=8, permutation_test=False):
+    score_lst = []
+    for subj in meg_subj_lst:
+        scores = ie.run_iem_3D(subj, n_classes=n_classes, permutation_test=permutation_test)
+        score_lst.append(scores)
+    score_lst = np.array(score_lst).mean(axis=0)
+    plt.imshow(score_lst, vmin=-1e14, vmax=1e14, cmap="autumn")
+    plt.colorbar()
+    plt.xlabel("timestep")
+    plt.ylabel("channel response")
+    name = "ml_results_iem_cv3d_all"
+    if permutation_test:
+        name += "_permutation"
+    plt.savefig("../Figures/ML/%s.png" % name)
+    plt.clf()
+    
 
 def main():
-    run_all_subjects(data="wave", permutation_test=False, n_classes=4, model_data="sklearn", shuffle=True)
+    run_all_subjects(data="wave", permutation_test=False, n_classes=8, model_data="sklearn", shuffle=True)
+    run_all_subjects(data="wave", permutation_test=True, n_classes=8, model_data="sklearn", shuffle=True)
+    #run_all_iem3d()
+    #run_all_iem3d(permutation_test=True)
     #run_all_subjects(data="wave", permutation_test=True, n_classes=4, model_data="sklearn", shuffle=True)
     #for i in range(0, 16):
     #    analyze_probabilities_bias_all(t=i)

@@ -23,7 +23,7 @@ from mne.minimum_norm import apply_inverse_epochs, read_inverse_operator
 from mne.decoding import (cross_val_multiscore, LinearModel, SlidingEstimator,
                           get_coef, Vectorizer, Scaler)
 
-from load_data import new_beh_lst, behavior_lst
+from file_lists import new_beh_lst, behavior_lst
 
 def load_behavioral_data(path):
     return loadmat(path)
@@ -63,13 +63,12 @@ def calc_accuracy(y_pred, y_test):
 
     return total / len(y_pred)
 
-def plot_results(time_scale, y_pred, ml_type, subj, training_err=[]):
+def plot_results(time_scale, y_pred, ml_type, subj, ymin=0.075, ymax=0.175, training_err=[]):
     if len(training_err) > 0:
         plt.errorbar(time_scale, y_pred, yerr=training_err)
     else:
         plt.plot(time_scale, y_pred)
-    plt.ylim((0.15, 0.45))
-    #plt.ylim((0.15, 0.35))
+    plt.ylim((ymin, ymax))
     plt.savefig('../Figures/ML/ml_results_%s_%s.png' % (ml_type, subj))
     plt.clf()
 
@@ -237,13 +236,15 @@ class DenseSlidingModel(object):
 class CNNSlidingModel(DenseSlidingModel):
     def __init__(self, input_shape, n_classes=4):
         self.input_shape = input_shape
-        DenseSlidingModel.__init__(self, n_epochs=30, n_classes=n_classes)
+        DenseSlidingModel.__init__(self, n_epochs=5, n_classes=n_classes)
         
 
     def set_models(self):
         model = keras.Sequential()
-        model.add(layers.Conv3D(4, 3, activation='relu', input_shape=self.input_shape))
+        model.add(layers.BatchNormalization(axis=[-3, -2, -1]))
+        model.add(layers.Conv3D(32, 3, activation='relu', input_shape=self.input_shape))
         model.add(layers.Conv3D(16, 3, activation='relu'))
+        #model.add(layers.Conv3D(16, 3, activation='relu'))
         model.add(layers.Flatten())
         model.add(layers.Dense(self.n_classes, activation='softmax'))
         model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
@@ -258,8 +259,6 @@ class CNNSlidingModel(DenseSlidingModel):
         y = y_hot
 
         accuracies = []
-
-        scaler = StandardScaler()
         print(X.shape)
 
 
@@ -267,7 +266,7 @@ class CNNSlidingModel(DenseSlidingModel):
             X_train, X_test = X[train], X[test]
             y_train, y_test = y[train], y[test]
             
-            self.model.fit(X_train, y_train, batch_size=20)
+            self.model.fit(X_train, y_train, batch_size=20, epochs=self.n_epochs)
             _, accuracy = self.model.evaluate(X_test, y_test)
             accuracies.append(accuracy)
             self.set_models()

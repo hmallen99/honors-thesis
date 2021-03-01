@@ -3,7 +3,7 @@ import numpy as np
 import mne
 import re
 import matplotlib.pyplot as plt
-from load_data import meg_locations
+from file_lists import meg_locations
 
 
 ch_exclude = ['MEG0834','MEG0835','MEG0836','MEG0844','MEG0845','MEG0846','MEG2914','MEG2915','MEG2916','MEG2924','MEG2925',
