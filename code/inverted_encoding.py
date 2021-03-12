@@ -5,7 +5,7 @@ import load_data as ld
 import machine_learning as ml
 from file_lists import meg_subj_lst, ch_picks
 from serial_dependence import get_diffs
-
+from scipy.io import loadmat
 
 
 
@@ -74,7 +74,7 @@ class InvertedEncoder(object):
             cur_trn = trn_cv_coeffs[trn_idx, :, :]
             cur_tst = trn_cv_coeffs[tst_idx, :, :]
 
-            for j in range(16):
+            for j in range(trn_cv_coeffs.shape[2]):
                 cur_trn_pt = cur_trn[:, :, j]
                 cur_tst_pt = cur_tst[:, :, j]
 
@@ -84,25 +84,27 @@ class InvertedEncoder(object):
                 wT_b = w_coeffs @ cur_tst_pt.T
                 chan_resp_cv_coeffs[tst_idx, :, j] = wT_w_inv @ wT_b
                 
-
-        scores = np.zeros(16)
-        for i in range(16):
+        
+        scores = np.zeros(chan_resp_cv_coeffs.shape[2])
+        for i in range(chan_resp_cv_coeffs.shape[2]):
             preds = chan_resp_cv_coeffs[:, :, i].argmax(axis=1) * (180 // self.n_ori_chans)
             n_correct = trng_cv[preds.astype(int) == trng_cv].shape[0]
             n_total = trng_cv.shape[0]
             scores[i] = n_correct / n_total
 
         chan_resp_cv_coeffs_shift = np.zeros(chan_resp_cv_coeffs.shape)
+        
         tar_idx = int(np.round(self.chan_center.shape[0] / 2))
-        print(tar_idx)
         for i in range(self.n_ori_chans):
             idx = trng_cv == trn_ou[i]
             chan_resp_cv_coeffs_shift[idx, :, :] = np.roll(chan_resp_cv_coeffs[idx, :, :], tar_idx - i, axis=1)
 
+        print(chan_resp_cv_coeffs_shift.shape)
         return scores, chan_resp_cv_coeffs_shift, return_repnum
 
 def run_iem_subject(subj, n_classes=8, permutation_test=False):
     X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, data="epochs", shuffle=False, ch_picks=ch_picks)
+    #X, y = load_eeg()
     if (permutation_test):
         shuffle_idx = np.random.choice(500, 500, replace=False)
         y = y[shuffle_idx]
@@ -111,7 +113,7 @@ def run_iem_subject(subj, n_classes=8, permutation_test=False):
     name = "IEM_cv"
     if permutation_test:
         name += "_permutation"
-    ml.plot_results(np.arange(16), scores, name, subj, ymin=0.075, ymax=0.175)
+    ml.plot_results(np.arange(scores[:].shape[0]), scores, name, subj, ymin=0.075, ymax=0.175)
     return scores
 
 def run_iem_3D(subj, n_classes=8, permutation_test=False, flat=False):
@@ -143,26 +145,32 @@ def run_iem_3D(subj, n_classes=8, permutation_test=False, flat=False):
     return mean_chan_resps
 
 def iem_plot_timesteps(subj, n_classes=8, t=7, permutation_test=False):
-    X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, data="epochs", shuffle=False, ch_picks=ch_picks)
+    #X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, data="epochs", shuffle=False, ch_picks=ch_picks)
+    X, y = load_eeg()
     if (permutation_test):
         shuffle_idx = np.random.choice(500, 500, replace=False)
         y = y[shuffle_idx]
     model = InvertedEncoder(n_classes)
     _, chan_resps, _ = model.cross_validate(X, y)
-    chan_resps = chan_resps[np.abs(chan_resps).max(axis=(1,2)) < 2e14]
+    #chan_resps = chan_resps[np.abs(chan_resps).max(axis=(1,2)) < 5e15]
     mean_chan_resps = chan_resps[:, :, t].mean(axis=0)
     plt.plot(mean_chan_resps)
     plt.savefig("../Figures/ML/IEM/bell_curve/bell_%s_%d.png" % (subj, t))
     plt.clf()
 
+    print(chan_resps.shape)
     chan_resps_time_t = chan_resps[:, :, t]
-    Xs = np.array([np.arange(n_classes) for _ in range(chan_resps[:].shape[0])])
-    Ys = np.array([np.ones(n_classes) * i for i in np.arange(chan_resps[:].shape[0])])
+    Xs = np.array([np.arange(n_classes) for _ in range(chan_resps_time_t[:].shape[0])])
+    Ys = np.array([np.ones(n_classes) * i for i in np.arange(chan_resps_time_t[:].shape[0])])
+    print(chan_resps_time_t.shape)
+    print(Xs.shape)
+    print(Ys.shape)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(Xs, Ys, chan_resps_time_t, cmap="coolwarm", vmin=-1e14, vmax=1e14)
+    surf = ax.plot_surface(Xs, Ys, chan_resps_time_t, cmap="coolwarm")
     fig.colorbar(surf, shrink=0.5, aspect=5)
     plt.savefig("../Figures/ML/IEM/bell_curve/bell_3d_%s_%d.png" % (subj, t))
+    plt.clf()
 
 
 def iem_serial_dependence(subj, n_classes=8, n_bins=15, t=7):
@@ -172,6 +180,7 @@ def iem_serial_dependence(subj, n_classes=8, n_bins=15, t=7):
     bin_width = 180 // n_bins
 
     X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, data="epochs", shuffle=False, ch_picks=ch_picks)
+    #X, y = load_eeg()
 
     model = InvertedEncoder(n_classes)
     _, chan_resps, repnum = model.cross_validate(X, y)
@@ -197,18 +206,28 @@ def iem_serial_dependence(subj, n_classes=8, n_bins=15, t=7):
 
     return
 
+def load_eeg():
+    eeg = loadmat("../Data/s08_EEG_ori_mini.mat")
+    X = eeg["trn"]
+    y = eeg["trng"].flatten()
+    print(X.shape)
+    print(y.shape)
+    print(y)
+    y = y // 20
+    return X, y 
 
 def main():
-    """score_lst = np.zeros(16)
+    score_lst = np.zeros(16)
     count = 0
     for subj in meg_subj_lst:
-        scores = run_iem_subject(subj)
+        scores = run_iem_subject(subj, n_classes=9)
         score_lst += scores
         count += 1
     
     score_lst /= count
-    ml.plot_results(np.arange(16), score_lst, "IEM_cv", "all")"""
-    iem_plot_timesteps("AK")
+    ml.plot_results(np.arange(16), score_lst, "IEM_cv", "all")
+    #iem_plot_timesteps("eeg", n_classes=9)
+    #run_iem_subject("AK", n_classes=9)
 
 
 
