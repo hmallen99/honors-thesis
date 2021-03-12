@@ -10,7 +10,7 @@ import load_data as ld
 import matplotlib.pyplot as plt
 import inverted_encoding as ie
 from sklearn.model_selection import KFold
-from file_lists import meg_subj_lst, aligned_dir
+from file_lists import meg_subj_lst, aligned_dir, ch_picks
 
 
 def save_main_figs(subj):
@@ -51,7 +51,7 @@ def run_subject(behavior_subj, data="stc", mode="cross_val", permutation_test=Fa
     if data == "epochs":
         X_train, X_test, y_train, y_test = ld.load_data(behavior_subj, n_train=n_train, n_test=n_test, 
                                                         n_classes=n_classes, use_off=use_off, data=data,
-                                                        time_shift=time_shift, mode=model_data, shuffle=shuffle)
+                                                        time_shift=time_shift, mode=model_data, shuffle=shuffle, ch_picks=ch_picks)
         if model_data == "sklearn":
             model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
         elif model_data == "keras":
@@ -339,15 +339,10 @@ def run_all_iem3d(n_classes=8, permutation_test=False):
     
 
 def main():
-    run_all_subjects(data="wave", permutation_test=False, n_classes=8, model_data="sklearn", shuffle=True)
-    run_all_subjects(data="wave", permutation_test=True, n_classes=8, model_data="sklearn", shuffle=True)
-    #run_all_iem3d()
-    #run_all_iem3d(permutation_test=True)
-    #run_all_subjects(data="wave", permutation_test=True, n_classes=4, model_data="sklearn", shuffle=True)
-    #for i in range(0, 16):
-    #    analyze_probabilities_bias_all(t=i)
-    #analyze_probabilities_bias_all()
-    #analyze_bias_card_obl_all_subjects(tmin=6, tmax=9, n_classes=8, time_shift=-1, plot_individual=True)
+    #run_all_iem()
+    #run_all_iem(permutation_test=True)
+    run_all_subjects(data="epochs", n_classes=4, shuffle=True)
+    run_all_subjects(data="epochs", n_classes=4, shuffle=True, permutation_test=True)
     return 0
 
 

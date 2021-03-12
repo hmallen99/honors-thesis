@@ -37,9 +37,13 @@ def generate_stc_X(stc_epoch, n=500, mode="sklearn"):
     del X
     return X_return
 
-def generate_epoch_X(epochs, n=500):
+def generate_epoch_X(epochs, n=500, ch_picks=[]):
     epochs.load_data().resample(40)
-    meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0, 0.4, False)
+    meg_epochs = []
+    if len(ch_picks) == 0:
+        meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0, 0.4, False)
+    else:
+        meg_epochs = epochs.copy().pick_channels(ch_picks).crop(0, 0.4, False)
     X = meg_epochs.get_data()
     return X[:n]
 
@@ -97,9 +101,9 @@ def get_stc_data(subj, stc_epoch, n_train=400, n_test=100, n_classes=4, use_off=
     y_train, y_test = y[:n_train], y[n_train:n_train+n_test]
     return X_train, X_test, y_train, y_test
 
-def get_epoch_data(subj, epochs, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, time_shift=0):
+def get_epoch_data(subj, epochs, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, time_shift=0, ch_picks=[]):
     y = load_y(subj, n=n_train+n_test, n_classes=n_classes, use_off=use_off)
-    X = generate_epoch_X(epochs, n=n_train+n_test)
+    X = generate_epoch_X(epochs, n=n_train+n_test, ch_picks=ch_picks)
 
     if time_shift != 0:
         X, y = shift_time_step(time_shift, X, y, n_train + n_test)
@@ -168,7 +172,7 @@ def get_epochs(behavior_subj):
     return meg_epochs
 
 
-def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, data="stc", mode="sklearn", time_shift=0):
+def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True, shuffle=False, data="stc", mode="sklearn", time_shift=0, ch_picks=[]):
     folder_dict = meg.get_folder_dict()
     subj = aligned_dir[behavior_subj]
     meg_dir = meg.meg_locations[behavior_subj]
@@ -185,7 +189,7 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
     epochs.drop(bad)
 
     if data == "epochs":
-        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, shuffle=shuffle, time_shift=time_shift)
+        return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, shuffle=shuffle, time_shift=time_shift, ch_picks=ch_picks)
 
     if data == "stc":
         src, bem = srcl.get_processed_mri_data(subj, source_localization_dir)

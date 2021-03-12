@@ -22,15 +22,18 @@ RS
 Second BEM
 
 Need to coreg:
+YY
+KY
+HY
+TOu
 
 
 Need to BEM:
-YY
+
 
 Run recon-all:
-TOu
-KY
-HY
+
+
 
 
 save for later:

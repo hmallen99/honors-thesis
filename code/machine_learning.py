@@ -63,7 +63,7 @@ def calc_accuracy(y_pred, y_test):
 
     return total / len(y_pred)
 
-def plot_results(time_scale, y_pred, ml_type, subj, ymin=0.075, ymax=0.175, training_err=[]):
+def plot_results(time_scale, y_pred, ml_type, subj, ymin=0.15, ymax=0.35, training_err=[]):
     if len(training_err) > 0:
         plt.errorbar(time_scale, y_pred, yerr=training_err)
     else:
@@ -106,7 +106,6 @@ class CosineRNNModel(object):
     def evaluate(self, X, y):
         _, accuracy = self.model.evaluate(X, y)
         return accuracy
-
 
 class LogisticRNNModel(object):
     def __init__(self, n_epochs=5, n_classes=4, n_timesteps=16):
