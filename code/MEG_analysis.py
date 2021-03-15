@@ -70,8 +70,8 @@ def get_raw(data):
     print([raw_file for raw_file in data])
     raws = [mne.io.read_raw_fif(raw_file, verbose=False) for raw_file in data]
     raw = mne.io.concatenate_raws(raws)
-    raw.load_data().filter(l_freq=2, h_freq=288)
-    raw.pick_types(meg="grad", stim=True, exclude = ch_exclude)
+    raw.load_data().filter(l_freq=2, h_freq=200)
+    raw.pick_types(meg="grad", stim=True, eog=True, exclude = ch_exclude)
     raw.notch_filter(np.arange(60, 241, 60))
     return raw
 

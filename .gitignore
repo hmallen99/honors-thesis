@@ -1,4 +1,4 @@
 *.fif
-*.mat
+Data/s08_EEG_ori_mini.mat
 code/Notes/github.txt
 .vscode
