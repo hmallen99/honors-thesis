@@ -68,6 +68,47 @@ def init_gmodel(amax=40, amin=-40, bmax=60, bmin=-60):
     gmodel.set_param_hint('b', max=bmax, min=bmin)
     return gmodel
 
+def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
+    rel_or, error = [], []
+    for subj in meg_subj_lst:
+        next_or, next_error = get_sd_data(subj)
+        rel_or.extend(next_or)
+        error.extend(next_error)
+
+    rel_or, error = np.array(rel_or), np.array(error)
+    mean_error = error - np.mean(error)
+
+    # Perform bootstrap test
+    a_list = []
+    for i in range(n_bootstraps):
+        bootstrap_idx = np.random.choice(len(rel_or), size=bootstrap_size, replace=True)
+        bootstrap_rel_or = rel_or[bootstrap_idx]
+        bootstrap_error = mean_error[bootstrap_idx]
+        gmodel = init_gmodel()
+        result = gmodel.fit(bootstrap_error, x=bootstrap_rel_or, b=0.03)
+        a_list.append(result.params['a'])
+
+    # Perform permutation test
+    a_perm_list = []
+    for i in range(n_permutations):
+        permutation_idx = np.random.choice(len(rel_or), size=len(rel_or), replace=False)
+        permutation_rel_or = rel_or[permutation_idx]
+        gmodel = init_gmodel()
+        result = gmodel.fit(mean_error, x=permutation_rel_or, b=0.03)
+        a_perm_list.append(result.params['a'])
+
+    a_list = np.array(a_list)
+    a_perm_list = np.array(a_perm_list)
+
+    p_num = 0
+    for i in range(n_bootstraps):
+        p_num += len(a_perm_list[a_perm_list > a_list[i]])
+
+    p_num = p_num / (n_bootstraps * n_permutations)
+
+    print(p_num)
+
+
 def run_all_subj():
     rel_or, error = [], []
     for subj in meg_subj_lst:
