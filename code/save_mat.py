@@ -6,7 +6,8 @@ from scipy.io import savemat, loadmat
 for subj in meg_subj_lst:
     X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=8, data="epochs", shuffle=False, ch_picks=[])
 
-    y = y * 20
+    y = y * (180 / 8)
+    print(y)
     ts = np.linspace(0, 0.4, 16)
     mat_dict = {
         "trng" : y,
