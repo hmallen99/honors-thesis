@@ -25,6 +25,8 @@ def get_sd_data(subj, error_cutoff=25, or_cutoff=60, n=500):
              error (predicted - actual)
     """
     pred, actual = load_behavior(subj)
+    actual = actual[~np.isnan(pred)]
+    pred = pred[~np.isnan(pred)]
     pred, actual = pred[:, :500].flatten(), actual[:, :500].flatten()
 
     rel_or = np.array([0] + [actual[i-1] - actual[i] for i in range(1, 500)])
