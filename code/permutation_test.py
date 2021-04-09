@@ -5,20 +5,37 @@ import load_data as ld
 from file_lists import ch_picks, meg_subj_lst
 import seaborn as sns
 import pandas as pd
+from scipy.io import loadmat, savemat
 
-def data_loader():
+def data_loader(time_shift=0):
     saved_data = {}
     def load_data(subj, n_classes=9):
         if subj in saved_data:
             mat_dict = saved_data[subj]
             return mat_dict["X"], mat_dict["y"]
-        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", ch_picks=ch_picks)
+        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", ch_picks=ch_picks, time_shift=time_shift)
         saved_data[subj] = {
             "X" : X,
             "y" : y
         }
         return X, y
     return load_data
+
+def data_loader_source():
+    saved_data = {}
+    def load_source(subj, n_classes=9):
+        if subj in saved_data:
+            mat_dict = loadmat("../Data/mat/%s.mat" % subj)
+            return mat_dict["X"], mat_dict["y"]
+        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="source", ch_picks=[], time_shift=time_shift)
+        mat_dict = {
+            "X" : X,
+            "y" : y
+        }
+        savemat("../Data/mat/%s.mat" % subj, mat_dict)
+        saved_data[subj] = subj
+        return X, y
+    return load_source
 
 def make_pd_bar(exp_accs, perm_accs):
     data_lst = []
@@ -58,8 +75,8 @@ def run_subject(subj, load_data, n_classes=9, permutation=False):
     results = model.cross_validate(X, y)
     return results, length
 
-def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10):
-    load_data = data_loader()
+def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10, time_shift=0):
+    load_data = data_loader(time_shift=time_shift)
     exp_results = np.zeros((n_exp_tests, 16))
     
     for i in range(n_exp_tests):
@@ -99,7 +116,7 @@ def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10):
     plt.figure(figsize=(8, 8))
     sns.barplot(x='trial', y='accuracy', data=acc_df, ci="sd")
     plt.title("Mean Accuracy, p-value: {:.3f}".format(p_value))
-    plt.savefig("../Figures/final_results/logistic_regression/accuracy.png")
+    plt.savefig("../Figures/final_results/logistic_regression/accuracy_prev.png")
     plt.clf()
 
     perm_t_accs_x = []
@@ -119,12 +136,14 @@ def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10):
     sns.lineplot(perm_t_accs_x, perm_t_accs_y, label="Permutation Accuracy", ci="sd")
     plt.legend()
     plt.ylim(0.05, 0.15)
+    plt.ylabel("Decoding Accuracy")
+    plt.xlabel("Time After Stimulus Onset (ms)")
     plt.title("Accuracy at each timestep")
-    plt.savefig("../Figures/final_results/logistic_regression/timestep_accuracy.png")
+    plt.savefig("../Figures/final_results/logistic_regression/timestep_accuracy_prev.png")
     plt.clf()
 
 def main():
-    run_ptest(n_classes=9)
+    run_ptest(n_classes=9, time_shift=-1)
 
 if __name__ == "__main__":
     main()
