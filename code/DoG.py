@@ -173,10 +173,11 @@ def run_subj(subj):
     plt.clf()
 
 def main():
-    for subj in meg_subj_lst:
-        run_subj(subj)
+    #for subj in meg_subj_lst:
+        #run_subj(subj)
 
-    run_all_subj()
+    #run_all_subj()
+    run_ptest()
 
 if __name__ == "__main__":
     main()
