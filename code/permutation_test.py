@@ -50,7 +50,7 @@ def make_pd_bar(exp_accs, perm_accs):
     df = pd.DataFrame(data=d)
     return df
 
-def run_subject(subj, load_data, n_classes=9, permutation=False):
+def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="logistic_sensor"):
     X, y = load_data(subj, n_classes)
     repnum = np.zeros(500)
     
@@ -71,7 +71,13 @@ def run_subject(subj, load_data, n_classes=9, permutation=False):
 
     if permutation:
         np.random.shuffle(y)
-    model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
+    model = []
+    if model_type == "logistic_sensor":
+        model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
+    elif model_type == "logistic_source":
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
+    elif model_type == "svm_sensor":
+        model = ml.SVMSlidingModel(k=20)
     results = model.cross_validate(X, y)
     return results, length
 
