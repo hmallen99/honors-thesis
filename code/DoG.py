@@ -8,11 +8,26 @@ from numpy import exp, loadtxt, pi, sqrt, std, mean, add
 import scipy
 from statistics import stdev 
 from scipy import stats
+from scipy.io import loadmat
 import scipy.special as sps
+import seaborn as sns
 
-from load_data import load_behavior, new_beh_lst
-from main_analysis import meg_subj_lst
-from serial_dependence import calc_relative_orientation
+#from load_data import load_behavior
+from file_lists import new_beh_lst, meg_subj_lst
+#from serial_dependence import calc_relative_orientation
+
+def calc_relative_orientation(x):
+    if np.abs(x) > 90:
+        x = x - (np.sign(x) * 180)
+        return x
+    return x
+
+def load_behavior(subj):
+    y_path = "../IEM-tutorial/Behavior/Sub%d_beh.mat" % new_beh_lst[subj]
+    data = loadmat(y_path)
+    pred = data["ResOrs"]
+    actual = data["TgtOrs"]
+    return pred.squeeze(), actual.squeeze()
 
 def calc_rel_or_all(X):
     return np.array([calc_relative_orientation(i) for i in X])
@@ -27,9 +42,10 @@ def get_sd_data(subj, error_cutoff=25, or_cutoff=60, n=500):
     pred, actual = load_behavior(subj)
     actual = actual[~np.isnan(pred)]
     pred = pred[~np.isnan(pred)]
-    pred, actual = pred[:, :500].flatten(), actual[:, :500].flatten()
+    length = len(pred)
+    pred, actual = pred[:length].flatten(), actual[:length].flatten()
 
-    rel_or = np.array([0] + [actual[i-1] - actual[i] for i in range(1, 500)])
+    rel_or = np.array([0] + [actual[i-1] - actual[i] for i in range(1, length)])
     rel_or = calc_rel_or_all(rel_or)
     
     
@@ -82,22 +98,33 @@ def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
 
     # Perform bootstrap test
     a_list = []
+    bootstrap_list = [[], []]
     for i in range(n_bootstraps):
+        
         bootstrap_idx = np.random.choice(len(rel_or), size=bootstrap_size, replace=True)
         bootstrap_rel_or = rel_or[bootstrap_idx]
         bootstrap_error = mean_error[bootstrap_idx]
         gmodel = init_gmodel()
         result = gmodel.fit(bootstrap_error, x=bootstrap_rel_or, b=0.03)
         a_list.append(result.params['a'])
+        if i % 500 == 0:
+            print("Exp test: %d" % i)
+            bootstrap_list[0].extend(bootstrap_rel_or)
+            bootstrap_list[1].extend(result.best_fit)
 
     # Perform permutation test
     a_perm_list = []
+    permutation_list = [[], []]
     for i in range(n_permutations):
         permutation_idx = np.random.choice(len(rel_or), size=len(rel_or), replace=False)
         permutation_rel_or = rel_or[permutation_idx]
         gmodel = init_gmodel()
         result = gmodel.fit(mean_error, x=permutation_rel_or, b=0.03)
         a_perm_list.append(result.params['a'])
+        if i % 500 == 0:
+            print("Perm test: %d" % i)
+            permutation_list[0].extend(permutation_rel_or)
+            permutation_list[1].extend(result.best_fit)
 
     a_list = np.array(a_list)
     a_perm_list = np.array(a_perm_list)
@@ -108,7 +135,17 @@ def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
 
     p_num = p_num / (n_bootstraps * n_permutations)
 
-    print(p_num)
+    print("P Value: {:.3f}".format(p_num))
+    print("Bootstrapped Average Amplitude: {:.3f}".format(a_list.mean()))
+    print("Permuted Average Amplitude: {:.3f}".format(a_perm_list.mean()))
+    plt.figure(figsize=(9, 6))
+    plt.scatter(rel_or, error, alpha=0.25)
+    sns.lineplot(bootstrap_list[0], bootstrap_list[1], color="r", label="Bootstrapped DoG", linewidth=3.5)
+    sns.lineplot(permutation_list[0], permutation_list[1], color="g", label="Permutation DoG", linewidth=3.5)
+    plt.xlabel("Relative Orientation of Previous Trial")
+    plt.ylabel("Error on Current Trial")
+    plt.title("a={:.3f}      P={:.3f}".format(a_list.mean(), p_num))
+    plt.savefig("../Figures/final_results/DoG/DoG_plot.png")
 
 
 def run_all_subj():
