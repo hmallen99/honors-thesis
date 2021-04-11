@@ -7,13 +7,13 @@ import seaborn as sns
 import pandas as pd
 from scipy.io import loadmat, savemat
 
-def data_loader(time_shift=0):
+def data_loader(time_shift=0, mode="sklearn"):
     saved_data = {}
     def load_data(subj, n_classes=9):
         if subj in saved_data:
             mat_dict = saved_data[subj]
             return mat_dict["X"], mat_dict["y"]
-        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", ch_picks=ch_picks, time_shift=time_shift)
+        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", mode=mode, ch_picks=ch_picks, time_shift=time_shift)
         saved_data[subj] = {
             "X" : X,
             "y" : y
@@ -21,7 +21,7 @@ def data_loader(time_shift=0):
         return X, y
     return load_data
 
-def data_loader_source():
+def data_loader_source(time_shift=0):
     saved_data = {}
     def load_source(subj, n_classes=9):
         if subj in saved_data:
@@ -36,6 +36,20 @@ def data_loader_source():
         saved_data[subj] = subj
         return X, y
     return load_source
+
+def data_loader_cnn(time_shift=0):
+    saved_data = {}
+    def load_data(subj, n_classes=9):
+        if subj in saved_data:
+            mat_dict = saved_data[subj]
+            return mat_dict["X"], mat_dict["y"]
+        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="wave", ch_picks=ch_picks, time_shift=time_shift)
+        saved_data[subj] = {
+            "X" : X,
+            "y" : y
+        }
+        return X, y
+    return load_data
 
 def make_pd_bar(exp_accs, perm_accs):
     data_lst = []
@@ -78,19 +92,21 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
         model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
     elif model_type == "svm_sensor":
         model = ml.SVMSlidingModel(k=20)
+    elif model_type == "cnn_sensor":
+        model = ml.CNNSlidingModel(X.shape[1:], n_classes=n_classes)
+    elif model_type == "snn_sensor":
+        model = ml.DenseSlidingModel(n_classes=n_classes)
     results = model.cross_validate(X, y)
     return results, length
 
-def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10, time_shift=0):
-    load_data = data_loader(time_shift=time_shift)
+def run_ptest(load_data, n_classes=9, n_p_tests=2, n_exp_tests=2, model_type="logistic_sensor"):
     exp_results = np.zeros((n_exp_tests, 16))
     
     for i in range(n_exp_tests):
+        print("Experimental test: %d" % i)
         exp_trials = 0
         for subj in meg_subj_lst:
-            temp_results, trials = run_subject(subj, load_data, n_classes=n_classes)
-            print(temp_results)
-            print("\n\nNum trials %d\n" % trials)
+            temp_results, trials = run_subject(subj, load_data, n_classes=n_classes, model_type=model_type)
             exp_results[i] += temp_results * trials
             exp_trials += trials
         exp_results[i] /= exp_trials
@@ -99,9 +115,10 @@ def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10, time_shift=0):
     perm_results = np.zeros((n_p_tests, 16))
     significant_permutations = 0
     for i in range(n_p_tests):
+        print("Permutation test: %d" % i)
         perm_trials = 0
         for subj in meg_subj_lst:
-            temp_results, trials = run_subject(subj, load_data, n_classes=n_classes, permutation=True)
+            temp_results, trials = run_subject(subj, load_data, n_classes=n_classes, permutation=True, model_type=model_type)
             perm_results[i] += temp_results * trials
             perm_trials += trials
         perm_results[i] /= perm_trials
@@ -122,7 +139,7 @@ def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10, time_shift=0):
     plt.figure(figsize=(8, 8))
     sns.barplot(x='trial', y='accuracy', data=acc_df, ci="sd")
     plt.title("Mean Accuracy, p-value: {:.3f}".format(p_value))
-    plt.savefig("../Figures/final_results/logistic_regression/accuracy_prev.png")
+    plt.savefig("../Figures/final_results/" + model_type + "/accuracy.png")
     plt.clf()
 
     perm_t_accs_x = []
@@ -145,11 +162,12 @@ def run_ptest(n_classes=9, n_p_tests=100, n_exp_tests=10, time_shift=0):
     plt.ylabel("Decoding Accuracy")
     plt.xlabel("Time After Stimulus Onset (ms)")
     plt.title("Accuracy at each timestep")
-    plt.savefig("../Figures/final_results/logistic_regression/timestep_accuracy_prev.png")
+    plt.savefig("../Figures/final_results/" + model_type + "/timestep_accuracy.png")
     plt.clf()
 
 def main():
-    run_ptest(n_classes=9, time_shift=-1)
+    load_data = data_loader_cnn()
+    run_ptest(load_data, n_classes=9, model_type="logistic_sensor")
 
 if __name__ == "__main__":
     main()

@@ -164,9 +164,10 @@ class DenseSlidingModel(object):
         self.models = []
         self.n_timesteps = n_timesteps
         self.n_classes = n_classes
+        self.loss = loss
         self.set_models()
         # This can be a function or a string
-        self.loss = loss
+        
 
     def set_models(self):
         self.models = []
