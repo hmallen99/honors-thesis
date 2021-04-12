@@ -7,13 +7,14 @@ import seaborn as sns
 import pandas as pd
 from scipy.io import loadmat, savemat
 
-def data_loader(time_shift=0, mode="sklearn"):
+def data_loader(time_shift=0, mode="sklearn", sample_rate=40):
     saved_data = {}
     def load_data(subj, n_classes=9):
         if subj in saved_data:
             mat_dict = saved_data[subj]
             return mat_dict["X"], mat_dict["y"]
-        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", mode=mode, ch_picks=ch_picks, time_shift=time_shift)
+        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", 
+                                    mode=mode, ch_picks=ch_picks, time_shift=time_shift, sample_rate=sample_rate)
         saved_data[subj] = {
             "X" : X,
             "y" : y
@@ -27,7 +28,7 @@ def data_loader_source(time_shift=0):
         if subj in saved_data:
             mat_dict = loadmat("../Data/mat/%s.mat" % subj)
             return mat_dict["X"], mat_dict["y"]
-        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="source", ch_picks=[], time_shift=time_shift)
+        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="stc", ch_picks=[], time_shift=time_shift)
         mat_dict = {
             "X" : X,
             "y" : y
@@ -99,20 +100,23 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
     results = model.cross_validate(X, y)
     return results, length
 
-def run_ptest(load_data, n_classes=9, n_p_tests=2, n_exp_tests=2, model_type="logistic_sensor"):
-    exp_results = np.zeros((n_exp_tests, 16))
+def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=10, sample_rate=40, model_type="logistic_sensor"):
+    n_timesteps = int(np.floor(0.4 * sample_rate))
+    print(n_timesteps)
+    exp_results = np.zeros((n_exp_tests, n_timesteps))
     
     for i in range(n_exp_tests):
         print("Experimental test: %d" % i)
         exp_trials = 0
         for subj in meg_subj_lst:
             temp_results, trials = run_subject(subj, load_data, n_classes=n_classes, model_type=model_type)
+            print(temp_results.shape)
             exp_results[i] += temp_results * trials
             exp_trials += trials
         exp_results[i] /= exp_trials
     mean_exp_acc = exp_results.mean(1)
 
-    perm_results = np.zeros((n_p_tests, 16))
+    perm_results = np.zeros((n_p_tests, n_timesteps))
     significant_permutations = 0
     for i in range(n_p_tests):
         print("Permutation test: %d" % i)
@@ -139,7 +143,7 @@ def run_ptest(load_data, n_classes=9, n_p_tests=2, n_exp_tests=2, model_type="lo
     plt.figure(figsize=(8, 8))
     sns.barplot(x='trial', y='accuracy', data=acc_df, ci="sd")
     plt.title("Mean Accuracy, p-value: {:.3f}".format(p_value))
-    plt.savefig("../Figures/final_results/" + model_type + "/accuracy.png")
+    plt.savefig("../Figures/final_results/" + model_type + "/accuracy_" + str(n_timesteps) + ".png")
     plt.clf()
 
     perm_t_accs_x = []
@@ -147,11 +151,11 @@ def run_ptest(load_data, n_classes=9, n_p_tests=2, n_exp_tests=2, model_type="lo
     exp_t_accs_x = []
     exp_t_accs_y = []
     for i in range(n_exp_tests):
-        exp_t_accs_x.extend(np.linspace(0, 0.375, 16))
+        exp_t_accs_x.extend(np.linspace(0, 0.375, n_timesteps))
         exp_t_accs_y.extend(exp_results[i])
 
     for i in range(n_p_tests):
-        perm_t_accs_x.extend(np.linspace(0, 0.375, 16))
+        perm_t_accs_x.extend(np.linspace(0, 0.375, n_timesteps))
         perm_t_accs_y.extend(perm_results[i])
 
     plt.figure(figsize=(8, 8))
@@ -162,12 +166,12 @@ def run_ptest(load_data, n_classes=9, n_p_tests=2, n_exp_tests=2, model_type="lo
     plt.ylabel("Decoding Accuracy")
     plt.xlabel("Time After Stimulus Onset (ms)")
     plt.title("Accuracy at each timestep")
-    plt.savefig("../Figures/final_results/" + model_type + "/timestep_accuracy.png")
+    plt.savefig("../Figures/final_results/" + model_type + "/timestep_accuracy_" + str(n_timesteps) + ".png")
     plt.clf()
 
 def main():
-    load_data = data_loader_cnn()
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor")
+    load_data = data_loader_source()
+    run_ptest(load_data, n_classes=9, model_type="logistic_source")
 
 if __name__ == "__main__":
     main()

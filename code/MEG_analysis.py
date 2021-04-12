@@ -93,16 +93,16 @@ def get_folder_dict():
     return folder_dict
 
 def get_processed_meg_data(subj, folder_dict, meg_dir):
-    epochs_path = "../Data/Epochs/%s-epo.fif" % subj
-    evoked_path = "../Data/Evoked/%s-ave.fif" % subj
+    epochs_path = "../Data/Epochs2/%s-epo.fif" % subj
+    evoked_path = "../Data/Evoked2/%s-ave.fif" % subj
     if os.path.isfile(epochs_path) and os.path.isfile(evoked_path):
         epochs = mne.read_epochs(epochs_path)
         evoked = mne.read_evokeds(evoked_path)[0]
         return epochs, evoked
     else:
         evoked, epochs, info = process_data(folder_dict[meg_dir], 0)
-        evoked.save('../Data/Evoked/%s-ave.fif' % subj)
-        epochs.save('../Data/Epochs/%s-epo.fif' % subj)
+        evoked.save('../Data/Evoked2/%s-ave.fif' % subj)
+        epochs.save('../Data/Epochs2/%s-epo.fif' % subj)
         return epochs, evoked
 
 
