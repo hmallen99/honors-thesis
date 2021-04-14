@@ -1,0 +1,5 @@
+Bad files:
+../../../../MEG_raw01/161101_nakagawa_SD/20161101_1148_SD_68_IASoff_raw.fif
+../../../../MEG_raw01/161101_nakagawa_SD/20161101_1156_SD_68_IASoff_raw.fif
+../../../../MEG_raw01/170808_noguchi_SD/20170808_1118_SD_raw.fif
+../../../../MEG_raw01/170808_yasumura_SD/20170808_1418_SD_raw.fif

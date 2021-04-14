@@ -182,12 +182,11 @@ def load_data(behavior_subj, n_train=400, n_test=100, n_classes=4, use_off=True,
     # Collect Data
     epochs, evoked = meg.get_processed_meg_data(subj, folder_dict, meg_dir)
 
-    bad = []
-    for i in range(len(epochs.events)):
-        if epochs.events[i][1] != 0:
-            bad += [i]
-
-    epochs.drop(bad)
+    #bad = []
+    #for i in range(len(epochs.events)):
+    #    if epochs.events[i][1] != 0:
+    #        bad += [i]
+    #epochs.drop(bad)
 
     if data == "epochs":
         return get_epoch_data(behavior_subj, epochs, n_train=n_train, n_test=n_test, n_classes=n_classes, use_off=use_off, shuffle=shuffle, time_shift=time_shift, ch_picks=ch_picks, sample_rate=sample_rate)

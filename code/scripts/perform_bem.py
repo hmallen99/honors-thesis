@@ -1,10 +1,10 @@
 import mne
 
 subjs = [
-    "KY",
-    "YY",
-    "HY",
-    "TOu",
+    "KY-aligned",
+    "YY-aligned",
+    "HY-aligned",
+    "TOu-aligned",
 ]
 
 for s in subjs:

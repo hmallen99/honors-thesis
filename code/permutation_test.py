@@ -13,7 +13,7 @@ def data_loader(time_shift=0, mode="sklearn", sample_rate=40):
         if subj in saved_data:
             mat_dict = saved_data[subj]
             return mat_dict["X"], mat_dict["y"]
-        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", 
+        X, _, y, _ = ld.load_data(subj, n_train=600, n_test=0, n_classes=n_classes, shuffle=True, data="epochs", 
                                     mode=mode, ch_picks=ch_picks, time_shift=time_shift, sample_rate=sample_rate)
         saved_data[subj] = {
             "X" : X,
@@ -27,8 +27,8 @@ def data_loader_source(time_shift=0):
     def load_source(subj, n_classes=9):
         if subj in saved_data:
             mat_dict = loadmat("../Data/mat/%s.mat" % subj)
-            return mat_dict["X"], mat_dict["y"]
-        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="stc", ch_picks=[], time_shift=time_shift)
+            return mat_dict["X"], mat_dict["y"].squeeze()
+        X, _, y, _ = ld.load_data(subj, n_train=600, n_test=0, n_classes=n_classes, shuffle=True, data="stc", ch_picks=[], time_shift=time_shift)
         mat_dict = {
             "X" : X,
             "y" : y
@@ -44,7 +44,7 @@ def data_loader_cnn(time_shift=0):
         if subj in saved_data:
             mat_dict = saved_data[subj]
             return mat_dict["X"], mat_dict["y"]
-        X, _, y, _ = ld.load_data(subj, n_train=500, n_test=0, n_classes=n_classes, shuffle=True, data="wave", ch_picks=ch_picks, time_shift=time_shift)
+        X, _, y, _ = ld.load_data(subj, n_train=600, n_test=0, n_classes=n_classes, shuffle=True, data="wave", ch_picks=ch_picks, time_shift=time_shift)
         saved_data[subj] = {
             "X" : X,
             "y" : y
@@ -90,7 +90,7 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
     if model_type == "logistic_sensor":
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=20, C=0.08, l1_ratio=0.95)
     elif model_type == "logistic_source":
-        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
+        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=400, C=0.05, l1_ratio=0.95)
     elif model_type == "svm_sensor":
         model = ml.SVMSlidingModel(k=20)
     elif model_type == "cnn_sensor":
@@ -170,8 +170,8 @@ def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=10, sample_rate
     plt.clf()
 
 def main():
-    load_data = data_loader_source()
-    run_ptest(load_data, n_classes=9, model_type="logistic_source")
+    load_data = data_loader()
+    run_ptest(load_data, n_classes=9, model_type="logistic_sensor")
 
 if __name__ == "__main__":
     main()

@@ -16,6 +16,10 @@ new_beh_lst = {
     "VA": 10,
     "RS": 14,
     "YMi": 11,
+    "YY": 20,
+    "KY": 8,
+    "HY": 13,
+    "TOu": 15,
 }
 
 aligned_dir = {
@@ -36,26 +40,34 @@ aligned_dir = {
     "RS": "RS-aligned",
     "VA": "VA-aligned",
     "YMi": "YMi-aligned",
+    "YY": "YY-aligned",
+    "KY": "KY-aligned",
+    "TOu": "TOu-aligned",
+    "HY": "HY-aligned",
 }
 
 meg_subj_lst = [
     "KA",
     "MF",
-    #"MK",
-    #"NNo",
-    #"KO",
+    "MK",
+    "NNo",
+    "KO",
     "HHy",
-    #"HO",
+    "HO",
     "AK",
     "HN",
     "NN",
     "JL",
-    "DI",
+    #"DI",
     "TE",
     "SoM",
     "VA",
     #"RS",
     "YMi",
+    "YY",
+    "KY",
+    "TOu"
+    #HY,
 ]
 
 behavior_lst = {
@@ -87,6 +99,10 @@ meg_locations = {
     "VA": "../../../../MEG_raw01/170728_alex_SD",
     "YMi": "../../../../MEG_raw01/170731_miyauchi_SD",
     "RS": "../../../../MEG_raw01/170804_sunami_SD",
+    "TOu": "../../../../MEG_raw01/170804_ouchida_SD",
+    "KY": "../../../../MEG_raw01/170131_yuasa_SD",
+    "YY": "../../../../MEG_raw01/170808_yasumura_SD",
+    "HY": "../../../../MEG_raw01/170804_yasui_SD",
 }
 
 ch_picks = [

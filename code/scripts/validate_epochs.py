@@ -28,8 +28,8 @@ for filename in folder_dict.keys():
         raw.load_data().filter(l_freq=2, h_freq=40)
         raw.pick_types(meg="grad", stim=True, exclude = ch_exclude) 
 
-        events = mne.find_events(raw)
-        epochs = mne.Epochs(raw, events, event_id=16384, tmin=-0.5, tmax = 1)
+        events = mne.find_events(raw, stim_channel='STI015')
+        epochs = mne.Epochs(raw, events, tmin=-0.5, tmax = 1)
 
         if len(epochs.events) != 100:
             bad_epochs += [raw_file]
@@ -37,7 +37,8 @@ for filename in folder_dict.keys():
         del raw
 
 
-text_file = open("bad_epoch_files.txt", "w")
+text_file = open("bad_epoch_files2.txt", "w")
+text_file.write("Bad files:\n")
 for b in bad_epochs:
     text_file.write(b)
     text_file.write("\n")

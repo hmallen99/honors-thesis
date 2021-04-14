@@ -45,12 +45,16 @@ def apply_ica(raw, participant):
     ica_raw = ica.apply(raw)
     return ica_raw
 
-def epoch_data(data, participant=-1, plot=False):
+def epoch_data(data, participant=-1, plot=False, bads=[]):
     print("Epoching Data")
     chan_idxs = [data.ch_names.index(ch) for ch in data.ch_names]
     reject = dict(grad=4000e-13)
-    events = mne.find_events(data)
-    epochs = mne.Epochs(data, events, event_id=16384, tmin=-0.5, tmax = 1, reject = reject)
+    events = mne.find_events(data, stim_channel="STI015")
+    if len(events) == 806:
+        events = mne.find_events(data, stim_channel="STI016")
+    epochs = mne.Epochs(data, events, tmin=-0.5, tmax = 1, reject = reject)
+    if len(events) == 801:
+        epochs.drop(indices=248)
     epochs.drop_bad()
     if plot:
         epochs.plot_drop_log(show=False).savefig("../figures/bad_epochs/bad_epochs_%i" % participant)
@@ -92,17 +96,18 @@ def get_folder_dict():
         folder_dict[folder] = [os.path.join(folder, entry) for entry in entries if re.findall(r"^\w+SD_\w*raw.fif", entry)]
     return folder_dict
 
+
 def get_processed_meg_data(subj, folder_dict, meg_dir):
-    epochs_path = "../Data/Epochs2/%s-epo.fif" % subj
-    evoked_path = "../Data/Evoked2/%s-ave.fif" % subj
+    epochs_path = "../Data/Epochs3/%s-epo.fif" % subj
+    evoked_path = "../Data/Evoked3/%s-ave.fif" % subj
     if os.path.isfile(epochs_path) and os.path.isfile(evoked_path):
         epochs = mne.read_epochs(epochs_path)
         evoked = mne.read_evokeds(evoked_path)[0]
         return epochs, evoked
     else:
         evoked, epochs, info = process_data(folder_dict[meg_dir], 0)
-        evoked.save('../Data/Evoked2/%s-ave.fif' % subj)
-        epochs.save('../Data/Epochs2/%s-epo.fif' % subj)
+        evoked.save('../Data/Evoked3/%s-ave.fif' % subj)
+        epochs.save('../Data/Epochs3/%s-epo.fif' % subj)
         return epochs, evoked
 
 
@@ -118,10 +123,10 @@ def main():
         evoked_list.append(evoked)
         i += 1
 
-    all_evoked = mne.combine_evoked(evoked_list, 'equal')
-    all_evoked.pick_types('grad').plot_topo(color='r', title="erf_average_topo", show=False).savefig("erf_map_average.pdf")
-    all_evoked.plot(picks=["MEG1923"], window_title="left_occipital_average", show=False).savefig("left_occipital_average.pdf")
-    all_evoked.plot(picks=["MEG2332"], window_title="right_occipital_average", show=False).savefig("right_occipital_average.pdf")
+    #all_evoked = mne.combine_evoked(evoked_list, 'equal')
+    #all_evoked.pick_types('grad').plot_topo(color='r', title="erf_average_topo", show=False).savefig("erf_map_average.pdf")
+    #all_evoked.plot(picks=["MEG1923"], window_title="left_occipital_average", show=False).savefig("left_occipital_average.pdf")
+    #all_evoked.plot(picks=["MEG2332"], window_title="right_occipital_average", show=False).savefig("right_occipital_average.pdf")
 
 if __name__ == "__main__":
     main()
