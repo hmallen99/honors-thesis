@@ -48,11 +48,11 @@ def apply_ica(raw, participant):
 def epoch_data(data, participant=-1, plot=False, bads=[]):
     print("Epoching Data")
     chan_idxs = [data.ch_names.index(ch) for ch in data.ch_names]
-    reject = dict(grad=4000e-13)
+    #reject = dict(grad=4000e-13)
     events = mne.find_events(data, stim_channel="STI015")
     if len(events) == 806:
         events = mne.find_events(data, stim_channel="STI016")
-    epochs = mne.Epochs(data, events, tmin=-0.5, tmax = 1, reject = reject)
+    epochs = mne.Epochs(data, events, tmin=-0.5, tmax = 1)
     if len(events) == 801:
         epochs.drop(indices=248)
     epochs.drop_bad()
@@ -62,7 +62,7 @@ def epoch_data(data, participant=-1, plot=False, bads=[]):
 
 def plot_evoked(epochs, participant, plot=False):
     print("Plotting Evoked")
-    evoked = epochs["16384"].average()
+    evoked = epochs.average()
     title = "Participant %i" % participant
     if plot:
         evoked.pick_types('grad').plot_topo(color='r', title=title, show=False).savefig("../figures/topomap/erf_map_%i.pdf" % participant)

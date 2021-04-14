@@ -67,7 +67,7 @@ def make_pd_bar(exp_accs, perm_accs):
 
 def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="logistic_sensor"):
     X, y = load_data(subj, n_classes)
-    repnum = np.zeros(500)
+    repnum = np.zeros(600)
     
     n_trials_per_orientation = np.zeros(n_classes)
 
@@ -158,9 +158,35 @@ def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=10, sample_rate
         perm_t_accs_x.extend(np.linspace(0, 0.375, n_timesteps))
         perm_t_accs_y.extend(perm_results[i])
 
+    timestep_accuracy_p_values = np.zeros(n_timesteps)
+    for i in range(n_exp_tests):
+        for j in range(n_timesteps):
+            timestep_accuracy_p_values[j] += len(perm_results[perm_results[:, j] > exp_results[i, j]])
+
+    timestep_accuracy_p_values /= (n_exp_tests * n_p_tests)
+    timesteps = np.linspace(0, 0.4 - (0.4 / n_timesteps), n_timesteps)
+    timestep_width = 0.4 / n_timesteps
+    sig_ranges = [[]]
+    for i in range(n_timesteps):
+        if timestep_accuracy_p_values[i] <= 0.05:
+            if len(sig_ranges[-1]) == 0:
+                sig_ranges[-1] = [timesteps[i] - (timestep_width / 2), timesteps[i] + (timestep_width / 2)]
+            else:
+                sig_ranges[-1][1] = timesteps[i] + (timestep_width / 2)
+        else:
+            if len(sig_ranges[-1]) > 0:
+                sig_ranges += [[]]
+
+    print(timestep_accuracy_p_values)
+
     plt.figure(figsize=(8, 8))
     sns.lineplot(exp_t_accs_x, exp_t_accs_y, label="Experimental Accuracy", ci="sd")
     sns.lineplot(perm_t_accs_x, perm_t_accs_y, label="Permutation Accuracy", ci="sd")
+
+    for rng in sig_ranges:
+        if len(rng) > 0:
+            plt.axvspan(max(rng[0], 0), rng[1], color="red", alpha=0.25)
+
     plt.legend()
     plt.ylim(0.05, 0.15)
     plt.ylabel("Decoding Accuracy")
@@ -171,7 +197,7 @@ def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=10, sample_rate
 
 def main():
     load_data = data_loader()
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor")
+    run_ptest(load_data, n_classes=9, model_type="svm_sensor")
 
 if __name__ == "__main__":
     main()
