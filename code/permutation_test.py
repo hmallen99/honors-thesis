@@ -196,8 +196,8 @@ def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=10, sample_rate
     plt.clf()
 
 def main():
-    load_data = data_loader()
-    run_ptest(load_data, n_classes=9, model_type="svm_sensor")
+    load_data = data_loader_source()
+    run_ptest(load_data, n_classes=9, model_type="logistic_source")
 
 if __name__ == "__main__":
     main()
