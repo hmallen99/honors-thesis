@@ -223,7 +223,7 @@ class DenseSlidingModel(object):
             split_accuracies = []
             for i in range(self.n_timesteps):
                 print("timestep: %d" % i)
-                self.models[i].fit(X_train[:, :, i], y_train, batch_size=5, epochs=self.n_epochs)
+                self.models[i].fit(X_train[:, :, i], y_train, batch_size=25, epochs=self.n_epochs)
                 print(X_train[:, :, i].shape)
                 _, accuracy = self.models[i].evaluate(X_test[:, :, i], y_test)
                 split_accuracies.append(accuracy)
@@ -375,7 +375,7 @@ class SVMSlidingModel(object):
     def __init__(self, k=200, C=1):
         self.clf = Pipeline([('scaler', StandardScaler()), 
                         ('f_classif', SelectKBest(f_classif, k)),
-                        ('linear', LinearModel(LinearSVC(C=C, max_iter=4000)))])
+                        ('linear', LinearModel(LinearSVC(C=C, max_iter=6000)))])
         self.model  = SlidingEstimator(self.clf, scoring="accuracy")
 
     def fit(self, X, y):
