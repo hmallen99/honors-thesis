@@ -14,10 +14,38 @@ def data_loader(time_shift=0, mode="sklearn", sample_rate=40):
             mat_dict = saved_data[subj]
             return mat_dict["X"], mat_dict["y"]
         X, _, y, _ = ld.load_data(subj, n_train=n_subj_trials[subj], n_test=0, n_classes=n_classes, shuffle=True, data="epochs", 
-                                    mode=mode, ch_picks=ch_picks, time_shift=time_shift, sample_rate=sample_rate)
+                                    mode=mode, ch_picks=[], time_shift=time_shift, sample_rate=sample_rate)
         saved_data[subj] = {
             "X" : X,
             "y" : y
+        }
+        return X, y
+    return load_data
+
+def percept_data_loader(mode="sklearn", time_shift=0, sample_rate=40):
+    saved_data = {}
+    def load_data(subj, n_classes=9):
+        if subj in saved_data:
+            mat_dict = saved_data[subj]
+            return mat_dict["X"], mat_dict["y"].squeeze()
+
+        y, _ = ld.load_behavior(subj)
+        y = y.squeeze()
+        y = y[:n_subj_trials[subj]]
+        X, _, _, _ = ld.load_data(subj, n_train=n_subj_trials[subj], n_test=0, n_classes=n_classes, shuffle=True, data="epochs", 
+                                    mode=mode, ch_picks=[], time_shift=time_shift, sample_rate=sample_rate)
+
+        X = X[~np.isnan(y)]
+        y = y[~np.isnan(y)]
+        y[np.abs(y) > 90] = y[np.abs(y) > 90] - 180 * np.sign(y[np.abs(y) > 90])
+        offset = 180 / (n_classes * 2)
+        y = (y + 90 + offset) % 180
+        y = np.floor(y / (180 / n_classes))
+        y = np.minimum(y, n_classes-1)
+        
+        saved_data[subj] = {
+            "X": X,
+            "y": y
         }
         return X, y
     return load_data
@@ -43,7 +71,7 @@ def data_loader_cnn(time_shift=0):
     def load_data(subj, n_classes=9):
         if subj in saved_data:
             mat_dict = saved_data[subj]
-            return mat_dict["X"], mat_dict["y"]
+            return mat_dict["X"], mat_dict["y"].squeeze()
         X, _, y, _ = ld.load_data(subj, n_train=600, n_test=0, n_classes=n_classes, shuffle=True, data="wave", ch_picks=ch_picks, time_shift=time_shift)
         saved_data[subj] = {
             "X" : X,
@@ -96,7 +124,7 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
     elif model_type == "cnn_sensor":
         model = ml.CNNSlidingModel(X.shape[1:], n_classes=n_classes)
     elif model_type == "snn_sensor":
-        model = ml.DenseSlidingModel(n_classes=n_classes, n_epochs=20)
+        model = ml.DenseSlidingModel(n_classes=n_classes, n_epochs=5)
     results = model.cross_validate(X, y)
     return results, length
 
@@ -143,7 +171,7 @@ def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rat
     plt.figure(figsize=(8, 8))
     sns.barplot(x='trial', y='accuracy', data=acc_df, ci="sd")
     plt.title("Mean Accuracy, p-value: {:.3f}".format(p_value))
-    plt.savefig("../Figures/final_results/" + model_type + "/accuracy_occipital3" + str(n_timesteps) + ".png")
+    plt.savefig("../Figures/final_results/" + model_type + "/accuracy_all" + str(n_timesteps) + ".png")
     plt.clf()
 
     perm_t_accs_x = []
@@ -192,16 +220,22 @@ def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rat
     plt.ylabel("Decoding Accuracy")
     plt.xlabel("Time After Stimulus Onset (ms)")
     plt.title("Accuracy at each timestep")
-    plt.savefig("../Figures/final_results/" + model_type + "/timestep_accuracy_occipital3" + str(n_timesteps) + ".png")
+    plt.savefig("../Figures/final_results/" + model_type + "/timestep_accuracy_all" + str(n_timesteps) + ".png")
     plt.clf()
 
 def main():
-    load_data = data_loader(time_shift=0)
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor")
-    run_ptest(load_data, n_classes=9, model_type="svm_sensor")
+    #load_data = data_loader(time_shift=0)
+    #run_ptest(load_data, n_classes=9, model_type="logistic_sensor")
+    #run_ptest(load_data, n_classes=9, model_type="svm_sensor")
     
+    #load_data_keras = data_loader(time_shift=0, mode="keras")
+    #run_ptest(load_data_keras, n_classes=9, model_type="snn_sensor")
+
     #load_data = data_loader_source(time_shift=0)
     #run_ptest(load_data, n_classes=9, model_type="logistic_source")
+
+    load_data_cnn = data_loader_cnn()
+    run_ptest(load_data_cnn, n_classes=9, model_type="cnn_sensor")
 
 if __name__ == "__main__":
     main()
