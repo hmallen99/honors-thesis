@@ -173,11 +173,11 @@ class DenseSlidingModel(object):
         self.models = []
         for _ in range(self.n_timesteps):
             model = keras.Sequential()
-            model.add(layers.Dense(128, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-3, l2=1e-2)))
-            model.add(layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-2, l2=1e-2)))
-            model.add(layers.Dense(32, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-2, l2=1e-2)))
+            #model.add(layers.Dense(128, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-3, l2=1e-2)))
+            model.add(layers.Dense(16, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01)))
+            model.add(layers.Dense(8, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=0.03, l2=0.03)))
             model.add(layers.Dense(self.n_classes, activation="softmax"))
-            model.compile(loss=self.loss, optimizer="adam", metrics="accuracy")
+            model.compile(loss=self.loss, optimizer="adam", metrics="categorical_accuracy")
             self.models.append(model)
         print("set model")
 
@@ -223,9 +223,9 @@ class DenseSlidingModel(object):
             split_accuracies = []
             for i in range(self.n_timesteps):
                 print("timestep: %d" % i)
-                self.models[i].fit(X_train[:, :, i], y_train, batch_size=5, epochs=self.n_epochs)
-                print(X_train[:, :, i].shape)
+                self.models[i].fit(X_train[:, :, i], y_train, batch_size=8, epochs=self.n_epochs)
                 _, accuracy = self.models[i].evaluate(X_test[:, :, i], y_test)
+                #print(self.models[i].predict(X_test[:, :, i]))
                 split_accuracies.append(accuracy)
             
             self.set_models()
@@ -241,13 +241,13 @@ class CNNSlidingModel(DenseSlidingModel):
 
     def set_models(self):
         model = keras.Sequential()
-        model.add(layers.BatchNormalization(axis=[-3, -2, -1]))
-        model.add(layers.Conv3D(32, 3, activation='relu', input_shape=self.input_shape))
-        model.add(layers.Conv3D(16, 3, activation='relu'))
+        #model.add(layers.BatchNormalization(axis=[-3, -2, -1]))
+        model.add(layers.Conv3D(16, 3, activation='relu', input_shape=self.input_shape))
+        model.add(layers.Conv3D(8, 3, activation='relu'))
         #model.add(layers.Conv3D(16, 3, activation='relu'))
         model.add(layers.Flatten())
         model.add(layers.Dense(self.n_classes, activation='softmax'))
-        model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
+        model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="categorical_accuracy")
         self.model = model
 
 
@@ -269,6 +269,8 @@ class CNNSlidingModel(DenseSlidingModel):
             self.model.fit(X_train, y_train, batch_size=20, epochs=self.n_epochs)
             _, accuracy = self.model.evaluate(X_test, y_test)
             accuracies.append(accuracy)
+            print(self.model.predict(X_test))
+            print(y_test)
             self.set_models()
 
         avg_acc = np.mean(accuracies)
@@ -375,7 +377,7 @@ class SVMSlidingModel(object):
     def __init__(self, k=200, C=1):
         self.clf = Pipeline([('scaler', StandardScaler()), 
                         ('f_classif', SelectKBest(f_classif, k)),
-                        ('linear', LinearModel(LinearSVC(C=C, max_iter=4000)))])
+                        ('linear', LinearModel(LinearSVC(C=C, max_iter=6000)))])
         self.model  = SlidingEstimator(self.clf, scoring="accuracy")
 
     def fit(self, X, y):
