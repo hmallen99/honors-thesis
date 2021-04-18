@@ -60,7 +60,7 @@ def plot_source():
 
 
 def main():
-    plot_erfs()
+    #plot_erfs()
     plot_source()
 
 
