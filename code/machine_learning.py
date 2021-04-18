@@ -373,6 +373,11 @@ class LogisticSlidingModel(object):
         plt.savefig('../Figures/weights/%s_epochs.png' % subj)
         plt.clf()
 
+    def get_patterns(self, subj, X, y, epochs):
+        self.model.fit(X, y)
+        patterns = get_coef(self.model, "patterns_", inverse_transform=True)
+        return mne.EvokedArray(patterns[:, -1, :], epochs.info, tmin=epochs.tmin)
+
 class SVMSlidingModel(object):
     def __init__(self, k=200, C=1):
         self.clf = Pipeline([('scaler', StandardScaler()), 
@@ -401,6 +406,11 @@ class SVMSlidingModel(object):
         features = self.model.estimators_[i].named_steps['f_classif'].get_support()
         np.save("%s_k_best" % subj, features)
         return features
+
+    def get_patterns(self, subj, X, y, epochs_info):
+        self.model.fit(X, y)
+        patterns = get_coef(self.model, "patterns_", inverse_transform=True)
+        return mne.EvokedArray(patterns[:, -1, :], epochs_info, tmin=0)
 
 class RandomForestSlidingModel(object):
     def __init__(self, k=200, C=1):

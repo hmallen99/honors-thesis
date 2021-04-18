@@ -7,14 +7,14 @@ import seaborn as sns
 import pandas as pd
 from scipy.io import loadmat, savemat
 
-def data_loader(time_shift=0, mode="sklearn", sample_rate=40):
+def data_loader(time_shift=0, mode="sklearn", sample_rate=40, picked_chans=ch_picks):
     saved_data = {}
     def load_data(subj, n_classes=9):
         if subj in saved_data:
             mat_dict = saved_data[subj]
             return mat_dict["X"], mat_dict["y"]
         X, _, y, _ = ld.load_data(subj, n_train=n_subj_trials[subj], n_test=0, n_classes=n_classes, shuffle=True, data="epochs", 
-                                    mode=mode, ch_picks=[], time_shift=time_shift, sample_rate=sample_rate)
+                                    mode=mode, ch_picks=picked_chans, time_shift=time_shift, sample_rate=sample_rate)
         saved_data[subj] = {
             "X" : X,
             "y" : y
@@ -22,7 +22,7 @@ def data_loader(time_shift=0, mode="sklearn", sample_rate=40):
         return X, y
     return load_data
 
-def percept_data_loader(mode="sklearn", time_shift=0, sample_rate=40):
+def percept_data_loader(mode="sklearn", time_shift=0, sample_rate=40, picked_chans=ch_picks):
     saved_data = {}
     def load_data(subj, n_classes=9):
         if subj in saved_data:
@@ -33,7 +33,7 @@ def percept_data_loader(mode="sklearn", time_shift=0, sample_rate=40):
         y = y.squeeze()
         y = y[:n_subj_trials[subj]]
         X, _, _, _ = ld.load_data(subj, n_train=n_subj_trials[subj], n_test=0, n_classes=n_classes, shuffle=True, data="epochs", 
-                                    mode=mode, ch_picks=[], time_shift=time_shift, sample_rate=sample_rate)
+                                    mode=mode, ch_picks=picked_chans, time_shift=time_shift, sample_rate=sample_rate)
 
         X = X[~np.isnan(y)]
         y = y[~np.isnan(y)]
@@ -128,7 +128,7 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
     results = model.cross_validate(X, y)
     return results, length
 
-def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rate=40, model_type="logistic_sensor"):
+def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rate=40, model_type="logistic_sensor", identifier="all"):
     n_timesteps = int(np.floor(0.4 * sample_rate))
     print(n_timesteps)
     exp_results = np.zeros((n_exp_tests, n_timesteps))
@@ -171,7 +171,7 @@ def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rat
     plt.figure(figsize=(8, 8))
     sns.barplot(x='trial', y='accuracy', data=acc_df, ci="sd")
     plt.title("Mean Accuracy, p-value: {:.3f}".format(p_value))
-    plt.savefig("../Figures/final_results/" + model_type + "/accuracy_all" + str(n_timesteps) + ".png")
+    plt.savefig("../Figures/final_results/" + model_type + "/accuracy_" + identifier + ".png")
     plt.clf()
 
     perm_t_accs_x = []
@@ -220,22 +220,25 @@ def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rat
     plt.ylabel("Decoding Accuracy")
     plt.xlabel("Time After Stimulus Onset (ms)")
     plt.title("Accuracy at each timestep")
-    plt.savefig("../Figures/final_results/" + model_type + "/timestep_accuracy_all" + str(n_timesteps) + ".png")
+    plt.savefig("../Figures/final_results/" + model_type + "/timestep_accuracy_" + identifier + ".png")
     plt.clf()
 
 def main():
-    #load_data = data_loader(time_shift=0)
-    #run_ptest(load_data, n_classes=9, model_type="logistic_sensor")
-    #run_ptest(load_data, n_classes=9, model_type="svm_sensor")
-    
-    #load_data_keras = data_loader(time_shift=0, mode="keras")
-    #run_ptest(load_data_keras, n_classes=9, model_type="snn_sensor")
+    load_data = percept_data_loader()
+    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_occipital")
+    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_occipital")
 
-    #load_data = data_loader_source(time_shift=0)
-    #run_ptest(load_data, n_classes=9, model_type="logistic_source")
+    load_data = percept_data_loader(picked_chans=[])
+    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_all")
+    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_all")
 
-    load_data_cnn = data_loader_cnn()
-    run_ptest(load_data_cnn, n_classes=9, model_type="cnn_sensor")
+    load_data = data_loader(time_shift=-1)
+    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="prev_occipital")
+    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="prev_occipital")
+
+    load_data = data_loader(time_shift=-1, picked_chans=[])
+    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="prev_all")
+    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="prev_all")
 
 if __name__ == "__main__":
     main()
