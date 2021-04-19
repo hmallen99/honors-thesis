@@ -163,7 +163,7 @@ class InvertedEncoder(object):
 
     def get_diffs(self, subj):
         tgt, _ = load_behavior(subj)
-        tgt = tgt[:500]
+        tgt = tgt[:n_subj_trials[subj]]
         diffs = [0]
         for i in range(1, len(tgt)):
             diffs.append(calc_relative_orientation(tgt[i - 1] - tgt[i]))
@@ -221,7 +221,7 @@ def make_pd_bar(exp_accs, perm_accs):
     df = pd.DataFrame(data=d)
     return df
 
-def run_all_subjects(n_ori_chans, n_p_tests=500, n_exp_tests=100, n_timesteps=16, percept_data=False, time_shift=0):
+def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16, percept_data=False, time_shift=0):
     IEM = InvertedEncoder(n_ori_chans)
     avg_response = np.zeros(n_ori_chans)
     total_trials = 0
@@ -386,9 +386,9 @@ def run_all_subjects(n_ori_chans, n_p_tests=500, n_exp_tests=100, n_timesteps=16
 
 
 
-def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_tests=50, n_timesteps=16):
+def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_tests=25, n_timesteps=16):
     IEM = InvertedEncoder(n_ori_chans)
-    
+    avg_response = np.zeros((n_ori_chans, n_timesteps))
    
     bin_accuracies = np.zeros((n_exp_tests, n_bins, n_ori_chans, n_timesteps))
     for i in range(n_exp_tests):
@@ -402,7 +402,9 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         
         for j in range(n_timesteps):
             bin_accuracies[i, :, :, j] = bins[:, :, j] / bin_sizes[:, None]
+            avg_response[:, j] += (np.sum(bins[:, :, j], axis=0) / np.sum(bin_sizes))
 
+    avg_response /= (n_exp_tests)
     perm_bin_accuracies = np.zeros((n_p_tests, n_bins, n_ori_chans, n_timesteps))
     for i in range(n_p_tests):
         print("Permutation Test: %i" %i)
@@ -415,11 +417,31 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         
         for j in range(n_timesteps):
             perm_bin_accuracies[i, :, :, j] = bins[:, :, j] / bin_sizes[:, None]
+
+    perm_avg_bin_accuracies = np.zeros(perm_bin_accuracies.shape)
+    avg_bin_accuracies = np.zeros(bin_accuracies.shape)
+    for i in range(n_p_tests):
+        for j in range(n_timesteps):
+            perm_avg_bin_accuracies[i, :, :, j] += perm_bin_accuracies[i, :, :, j] - avg_response[:, j]
+        
+    for i in range(n_exp_tests):
+        for j in range(n_timesteps):
+            avg_bin_accuracies[i, :, :, j] += bin_accuracies[i, :, :, j] - avg_response[:, j]
+
+    ptest_comp = np.zeros((n_bins, n_ori_chans, n_timesteps))
+    for i in range(n_p_tests):
+        for j in range(n_exp_tests):
+            gr_eq_vals = np.abs(perm_avg_bin_accuracies[i, :, :, :]) >= np.abs(avg_bin_accuracies[j, :, :, :])
+            ptest_comp[gr_eq_vals] += 1.0
+    ptest_comp /= (n_p_tests * n_exp_tests)
         
     for j in range(n_timesteps):
-        figure = plt.figure(figsize=(8,10))
-        ax0 = figure.add_subplot(2, 1, 1)
-        im0 = ax0.imshow(bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal")
+        figure = plt.figure(figsize=(8,15))
+
+        
+
+        ax0 = figure.add_subplot(3, 1, 1)
+        im0 = ax0.imshow(bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal", vmin=0.15, vmax=0.35)
         ax0.set_xlabel("Relative Previous Orientation")
         figure.colorbar(im0, ax=ax0)
         plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
@@ -427,23 +449,35 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         plt.ylabel("Channel response")
         plt.title("Channel response binned by previous orientation, t=%d" % j)
 
-        ax1 = figure.add_subplot(2, 1, 2)
-        im1 = ax1.imshow(perm_bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal")
+        ax1 = figure.add_subplot(3, 1, 2)
+        im1 = ax1.imshow(perm_bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal", vmin=0.15, vmax=0.35)
         ax1.set_xlabel("Relative Previous Orientation")
         figure.colorbar(im1, ax=ax1)
 
         plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
         plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
-        plt.title("Permutation")
-        
-        
         plt.ylabel("Channel response")
+        plt.title("Permutation")
+
+        ax2 = figure.add_subplot(3, 1, 3)
+        im2 = ax2.imshow(ptest_comp[:, :, j].T, aspect="equal", vmin=0, vmax=1)
+        ax2.set_xlabel("Relative Previous Orientation")
+        figure.colorbar(im2, ax=ax2)
+
+        plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
+        plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
+        plt.ylabel("Channel response")
+        plt.title("P Value")
+        
+        
+        
         plt.savefig("../Figures/IEM/python_files/sd_all_t%d.png" % j)
         plt.clf()
     return
 
 def main():
     run_all_subjects(9, percept_data=False)
+    run_all_subjects(9, time_shift=-1)
     #load_behavior("KA")
     #load_percept_data("KA")
     #iem_sd_all(9)

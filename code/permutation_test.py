@@ -124,11 +124,11 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
     elif model_type == "cnn_sensor":
         model = ml.CNNSlidingModel(X.shape[1:], n_classes=n_classes)
     elif model_type == "snn_sensor":
-        model = ml.DenseSlidingModel(n_classes=n_classes, n_epochs=5)
+        model = ml.DenseSlidingModel(n_classes=n_classes, n_epochs=3)
     results = model.cross_validate(X, y)
     return results, length
 
-def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rate=40, model_type="logistic_sensor", identifier="all"):
+def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=20, sample_rate=40, model_type="logistic_sensor", identifier="all"):
     n_timesteps = int(np.floor(0.4 * sample_rate))
     print(n_timesteps)
     exp_results = np.zeros((n_exp_tests, n_timesteps))
@@ -224,21 +224,27 @@ def run_ptest(load_data, n_classes=9, n_p_tests=500, n_exp_tests=100, sample_rat
     plt.clf()
 
 def main():
-    load_data = percept_data_loader()
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_occipital")
-    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_occipital")
-
-    load_data = percept_data_loader(picked_chans=[])
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_all")
-    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_all")
+    load_data = data_loader()
+    run_ptest(load_data, model_type="svm_sensor", identifier="occipital")
 
     load_data = data_loader(time_shift=-1)
     run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="prev_occipital")
     run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="prev_occipital")
 
-    load_data = data_loader(time_shift=-1, picked_chans=[])
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="prev_all")
-    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="prev_all")
+    load_data = data_loader(mode="Keras")
+    run_ptest(load_data, model_type="snn_sensor", identifier="occipital")
+
+    load_data = percept_data_loader()
+    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_occipital")
+    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_occipital")
+
+    #load_data = percept_data_loader(picked_chans=[])
+    #run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_all")
+    #run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_all")
+
+    #load_data = data_loader(time_shift=-1, picked_chans=[])
+    #run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="prev_all")
+    #run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="prev_all")
 
 if __name__ == "__main__":
     main()

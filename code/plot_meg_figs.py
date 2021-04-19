@@ -44,7 +44,7 @@ def plot_source():
     stc_list = []
     vertices = []
     tstep = 0.01
-    for subj in meg_subj_lst:
+    for subj in ["KA", "AK"]:
         stc = get_source_data(subj)
         stc = srcl.morph_to_fsaverage(stc, aligned_dir[subj])
         #srcl.plot_source(stc, subject=subj)
@@ -53,8 +53,10 @@ def plot_source():
         tstep = stc.times[1] - stc.times[0]
 
     stc_all_data = np.mean(np.array(stc_list), axis=0)
-    stc_all = mne.SourceEstimate(stc_all_data, vertices, -0.5, tstep, subject="all")
-    srcl.plot_source(stc_all, subject="all")
+    stc_all = mne.SourceEstimate(stc_all_data, vertices, -0.5, tstep, subject="fsaverage")
+    srcl.plot_source(stc_all, subject="fsaverage", views="caudal")
+    for i in np.arange(0, 0.38, 0.025):
+        srcl.plot_source(stc_all, initial_time=i, subject="fsaverage", views="caudal")
 
 
 
