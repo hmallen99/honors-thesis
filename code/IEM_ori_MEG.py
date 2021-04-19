@@ -235,6 +235,8 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     exp_t_accs_y = []
     exp_ch_responses = np.zeros((n_exp_tests, n_ori_chans))
     exp_results = np.zeros((n_exp_tests, n_timesteps))
+    exp_timestep_ch_response = np.zeros((n_ori_chans, n_timesteps))
+    exp_accuracies_4_8 = np.zeros(n_exp_tests)
     for i in range(n_exp_tests):
         print("Trial %d" % (i + 1))
         test_trials = 0
@@ -244,12 +246,15 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
             coeffs, trng_cv, targ_ori = IEM.run_subject(subj, shuffle_data=True, 
                                                         percept_data=percept_data, time_shift=time_shift)    
             tmean = coeffs.mean(axis=2)
+            exp_timestep_ch_response += coeffs.mean(axis=0) * len(trng_cv)
             exp_accuracies[i] += n_correct(tmean, targ_ori, len(trng_cv))
+            exp_accuracies_4_8[i] += n_correct(coeffs[:, :, 4:9].mean(axis=2), targ_ori, len(trng_cv))
             trial_accuracy += n_correct_tsteps(coeffs, targ_ori, len(trng_cv))
             trial_response += np.sum(tmean, 0)
             total_trials += len(trng_cv)
             test_trials += len(trng_cv)
         exp_accuracies[i] /= test_trials
+        exp_accuracies_4_8[i] /= test_trials
 
         trial_accuracy = trial_accuracy / test_trials
         exp_t_accs_x.extend(np.linspace(0, 0.375, n_timesteps))
@@ -264,10 +269,23 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         print("Test Accuracy: {:.3f}".format(exp_accuracies[i]))
 
     avg_response = avg_response / total_trials
+    exp_timestep_ch_response /= total_trials
+    plt.figure(figsize=(8, 8))
+    plt.imshow(exp_timestep_ch_response, aspect="equal")
+    plt.colorbar()
+    plt.xticks(ticks=np.arange(-0.5, n_timesteps+0.5, 1), labels=np.arange(0, 400, 25).astype(int))
+    plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
+    plt.xlabel("Timestep (millisencods)")
+    plt.ylabel("Channel")
+
+    plt.title("Channel Response at each timestep")
+    plt.savefig("../Figures/IEM/python_files/timestep_ch_response.png")
+    plt.clf()
 
     print("Running Permutation Tests")
     permutation_response = np.zeros(n_ori_chans)
     extreme_accs = np.zeros(n_exp_tests)
+    extreme_accs_4_8 = np.zeros(n_exp_tests)
     perm_t_accs_x = []
     perm_t_accs_y = []
     perm_accuracy = 0
@@ -297,6 +315,8 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         for j in range(n_exp_tests):
             if temp_perm_accuracy >= exp_accuracies[j]:
                 extreme_accs[j] += 1
+            if temp_perm_accuracy >= exp_accuracies_4_8[j]:
+                extreme_accs_4_8[j] += 1
         perm_accuracies.append(temp_perm_accuracy)
 
         perm_trial_acc = perm_trial_acc / total_trials
@@ -324,6 +344,13 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     sns.barplot(x='Trial', y='accuracy', data=acc_df, ci="sd")
     plt.title("Mean Accuracy, p-value: {:.3f}".format(extreme_accs.mean() / n_p_tests))
     plt.savefig("../Figures/IEM/python_files/accuracy.png")
+    plt.clf()
+
+    acc_df_4_8 = make_pd_bar(exp_accuracies_4_8, perm_accuracies)
+    plt.figure(figsize=(8, 8))
+    sns.barplot(x='Trial', y='accuracy', data=acc_df_4_8, ci="sd")
+    plt.title("Accuracy from 100-200 ms, p-value: {:.3f}".format(extreme_accs_4_8.mean() / n_p_tests))
+    plt.savefig("../Figures/IEM/python_files/accuracy_4_8.png")
     plt.clf()
 
     plt.figure(figsize=(8,8))
