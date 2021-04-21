@@ -50,13 +50,19 @@ def percept_data_loader(mode="sklearn", time_shift=0, sample_rate=40, picked_cha
         return X, y
     return load_data
 
-def data_loader_source(time_shift=0):
+
+
+def data_loader_source(time_shift=0, pre_loaded=False):
     saved_data = {}
+    if pre_loaded:
+        for subj in meg_subj_lst:
+            saved_data[subj] = subj
     def load_source(subj, n_classes=9):
         if subj in saved_data:
             mat_dict = loadmat("../Data/mat/%s.mat" % subj)
-            return mat_dict["X"], mat_dict["y"].squeeze()
-        X, _, y, _ = ld.load_data(subj, n_train=600, n_test=0, n_classes=n_classes, shuffle=True, data="stc", ch_picks=[], time_shift=time_shift)
+            return mat_dict["X"][:, :4096, :], mat_dict["y"].squeeze()
+        X, _, y, _ = ld.load_data(subj, n_train=n_subj_trials[subj], n_test=0, n_classes=n_classes, 
+                                  shuffle=True, data="stc", ch_picks=[], time_shift=time_shift, sample_rate=40)
         mat_dict = {
             "X" : X,
             "y" : y
@@ -95,6 +101,7 @@ def make_pd_bar(exp_accs, perm_accs):
 
 def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="logistic_sensor"):
     X, y = load_data(subj, n_classes)
+    print(X.shape)
     repnum = np.zeros(X.shape[0])
     
     n_trials_per_orientation = np.zeros(n_classes)
@@ -118,7 +125,7 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
     if model_type == "logistic_sensor":
         model = ml.LogisticSlidingModel(max_iter=1500, n_classes=n_classes, k=25, C=0.09, l1_ratio=0.95)
     elif model_type == "logistic_source":
-        model = ml.LogisticSlidingModel(max_iter=4000, n_classes=n_classes, k=1000, C=0.05, l1_ratio=0.95)
+        model = ml.LogisticSlidingModel(max_iter=500, n_classes=n_classes, k=100, C=0.05, l1_ratio=0.95)
     elif model_type == "svm_sensor":
         model = ml.SVMSlidingModel(k=25, C=0.85)
     elif model_type == "cnn_sensor":
@@ -128,7 +135,7 @@ def run_subject(subj, load_data, n_classes=9, permutation=False, model_type="log
     results = model.cross_validate(X, y)
     return results, length
 
-def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=20, sample_rate=40, model_type="logistic_sensor", identifier="all"):
+def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=10, sample_rate=40, model_type="logistic_sensor", identifier="all"):
     n_timesteps = int(np.floor(0.4 * sample_rate))
     print(n_timesteps)
     exp_results = np.zeros((n_exp_tests, n_timesteps))
@@ -224,27 +231,12 @@ def run_ptest(load_data, n_classes=9, n_p_tests=100, n_exp_tests=20, sample_rate
     plt.clf()
 
 def main():
-    load_data = data_loader()
-    run_ptest(load_data, model_type="svm_sensor", identifier="occipital")
-
-    load_data = data_loader(time_shift=-1)
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="prev_occipital")
-    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="prev_occipital")
-
-    load_data = data_loader(mode="Keras")
-    run_ptest(load_data, model_type="snn_sensor", identifier="occipital")
-
-    load_data = percept_data_loader()
-    run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_occipital")
-    run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_occipital")
-
     #load_data = percept_data_loader(picked_chans=[])
     #run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="percept_all")
     #run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="percept_all")
 
-    #load_data = data_loader(time_shift=-1, picked_chans=[])
-    #run_ptest(load_data, n_classes=9, model_type="logistic_sensor", identifier="prev_all")
-    #run_ptest(load_data, n_classes=9, model_type="svm_sensor", identifier="prev_all")
+    load_data = data_loader_source(pre_loaded=True)
+    run_ptest(load_data, n_classes=9, model_type="logistic_source", identifier="source")
 
 if __name__ == "__main__":
     main()
