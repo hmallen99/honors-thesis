@@ -5,6 +5,7 @@ import seaborn as sns
 import pandas as pd
 from file_lists import new_beh_lst, meg_subj_lst, ch_picks, n_subj_trials
 import load_data as ld
+from DoG import init_gmodel
 
 saved_data = {}
 
@@ -187,6 +188,18 @@ class InvertedEncoder(object):
             bin_sizes[diffs[i]] += 1
         
         return bins, bin_sizes
+
+    def run_sd_dog(self, subj, permutation_test=False):
+        _, trng, _ = load_data(subj)
+        trn_repnum = self.make_trn_repnum(trng)
+        diffs = self.get_diffs(subj)
+        diffs = diffs[~np.isnan(trn_repnum)]
+        if permutation_test:
+            np.random.shuffle(diffs)
+        shuffle_idx = np.random.choice(len(trng), len(trng), replace=False)
+        coeffs_shift, _, _ = self.run_subject(subj, shuffle_data=True, shuffle_idx=shuffle_idx)
+        
+        return coeffs_shift, diffs
             
 
 
@@ -411,6 +424,90 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     plt.savefig("../Figures/IEM/python_files/timestep_accuracy.png")
     plt.clf()
 
+def calc_sd_bias(coeffs, timestep):
+
+    return np.dot(coeffs[:, :, timestep], np.linspace(-1, 1, 9))
+
+def run_DoG_trial(ch_bias, diffs, bootstrap_size=1000, permutation_test=False):
+    bootstrap_idx = np.random.choice(len(diffs), size=bootstrap_size, replace=True)
+    ch_bias_bootstrap = ch_bias[bootstrap_idx]
+    diffs_bootstrap = diffs[bootstrap_idx]
+
+    diffs_bootstrap = diffs_bootstrap[np.abs(ch_bias_bootstrap) < 5]
+    ch_bias_bootstrap = ch_bias_bootstrap[np.abs(ch_bias_bootstrap) < 5]
+
+    ch_bias_bootstrap = ch_bias_bootstrap[np.abs(diffs_bootstrap) < 60]
+    diffs_bootstrap = diffs_bootstrap[np.abs(diffs_bootstrap) < 60]
+
+    if permutation_test:
+        np.random.shuffle(diffs_bootstrap)
+    gmodel = init_gmodel()
+    result = gmodel.fit(ch_bias_bootstrap, x=diffs_bootstrap, b=0.03)
+    return result.best_fit, diffs_bootstrap, result.params["a"]
+
+def iem_sd_dog(n_ori_chans, n_exp_tests=25, n_bootstraps=1000, n_permutations=10000, n_timesteps=16):
+    model = InvertedEncoder(n_ori_chans)
+    ch_bias_list = [[] for _ in range(16)]
+    diffs_list = []
+
+
+    for i in range(n_exp_tests):
+        print("Experimental Test: %i" % i)
+
+        for subj in meg_subj_lst:
+            coeffs, diffs = model.run_sd_dog(subj)
+            diffs_list.extend(diffs)
+
+            for j in range(n_timesteps):
+                ch_bias_list[j].extend(calc_sd_bias(coeffs, j))
+
+
+    diffs_list = np.array(diffs_list)
+    ch_bias = np.array(ch_bias_list)    
+
+    
+
+    for j in range(n_timesteps):
+        print("timestep: %d" % j)
+        dog_fit_list = []
+        diffs_bootstrap_list = []
+
+        dog_fit_p_list = []
+        diffs_bootstrap_p_list = []
+
+        a_list = np.zeros(n_bootstraps)
+        p_value = 0
+        for i in range(n_bootstraps):
+            dog_fit, diffs_bootstrap, a_bootstrap = run_DoG_trial(ch_bias[j], diffs)
+            a_list[i] = a_bootstrap
+            if i % 10 == 0:
+                dog_fit_list.extend(dog_fit)
+                diffs_bootstrap_list.extend(diffs_bootstrap)
+            
+        for i in range(n_permutations):
+            dog_fit, diffs_bootstrap, a_bootstrap = run_DoG_trial(ch_bias[j], diffs, permutation_test=True)
+            p_value += len(a_list[a_list <= a_bootstrap])
+            if i % 100 == 0:
+                dog_fit_p_list.extend(dog_fit)
+                diffs_bootstrap_p_list.extend(diffs_bootstrap)
+
+        p_value /= (n_permutations * n_bootstraps)
+
+        plt.figure(figsize=(9, 6))
+        plt.scatter(diffs_list, ch_bias[j], alpha=0.25)
+        sns.lineplot(diffs_bootstrap_list, dog_fit_list, color="r", label="Bootstrapped DoG", linewidth=3.5)
+        sns.lineplot(diffs_bootstrap_p_list, dog_fit_p_list, color="g", label="Permutation DoG", linewidth=3.5)
+        plt.legend()
+        plt.xlabel("Relative orientation of previous trial")
+        plt.ylabel("Channel response bias on current trial")
+        plt.xlim((-60, 60))
+        plt.ylim((-40, 40))
+        plt.title("a={:.3f}        P={:.3f}".format(a_list.mean(), p_value))
+        plt.savefig("../Figures/final_results/bias/bias_dog_t%d.png" % j)
+        plt.clf()
+
+            
+    return
 
 
 def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_tests=25, n_timesteps=16):
@@ -504,10 +601,11 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
 
 def main():
     #run_all_subjects(9, percept_data=False)
-    run_all_subjects(9, time_shift=-1)
+    #run_all_subjects(9, time_shift=-1)
     #load_behavior("KA")
     #load_percept_data("KA")
     #iem_sd_all(9)
+    iem_sd_dog(9, n_exp_tests=10, n_bootstraps=1000, n_permutations=10000)
 
 if __name__ == "__main__":
     main()

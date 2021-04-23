@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import mne
 import MEG_analysis as meg
 import source_localization as srcl
-from file_lists import aligned_dir, meg_locations, meg_subj_lst
+from file_lists import aligned_dir, meg_locations, meg_subj_lst, ch_picks
 
 def get_meg_data(subj):
     folder_dict = meg.get_folder_dict()
@@ -37,8 +37,10 @@ def plot_erfs():
         evoked_lst.append(evoked)
 
     evoked_all = mne.combine_evoked(evoked_lst, 'equal')
-    evoked_all.pick_types('grad').plot_topo(color='r', title="Average Evoked Response", show=False)
-    plt.savefig("../Figures/final_results/erfs/all_erf.png", dpi=400)
+    #evoked_all.pick_types('grad').plot_topo(color='r', title="Average Evoked Response", show=False)
+    plt.figure(figsize=(8, 6))
+    evoked_all.plot(picks=ch_picks, show=False, spatial_colors=True)
+    plt.savefig("../Figures/final_results/erfs/occ_erf.png", dpi=400)
 
 def plot_source():
     stc_list = []
@@ -54,16 +56,16 @@ def plot_source():
 
     stc_all_data = np.mean(np.array(stc_list), axis=0)
     stc_all = mne.SourceEstimate(stc_all_data, vertices, -0.5, tstep, subject="fsaverage")
-    srcl.plot_source(stc_all, subject="fsaverage", views="caudal")
+    srcl.plot_source(stc_all, subject="fsaverage", views="lateral", hemi="lh")
     for i in np.arange(0, 0.38, 0.025):
-        srcl.plot_source(stc_all, initial_time=i, subject="fsaverage", views="caudal")
+        srcl.plot_source(stc_all, initial_time=i, subject="fsaverage", views="lateral", hemi="lh")
 
 
 
 
 def main():
-    #plot_erfs()
-    plot_source()
+    plot_erfs()
+    #plot_source()
 
 
 if __name__ == "__main__":
