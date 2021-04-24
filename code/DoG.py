@@ -86,6 +86,98 @@ def init_gmodel(amax=40, amin=-40, bmax=60, bmin=-60):
     gmodel.set_param_hint('b', max=bmax, min=bmin)
     return gmodel
 
+
+def run_ptestv2(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
+    subj_data = {}
+    for subj in meg_subj_lst:
+        next_or, next_error = get_sd_data(subj)
+        subj_data[subj] = (next_or, next_error)
+
+    fit_list = [[], []]
+    a_list = np.zeros((len(meg_subj_lst), n_bootstraps))
+    for i in range(n_bootstraps):
+        if i % 500 == 0:
+            print("Experimental Test %i" % i)
+
+        for j, subj in enumerate(meg_subj_lst):
+            subj_rel_or, subj_error = subj_data[subj]
+            bootstrap_idx = np.random.choice(len(subj_rel_or), size=bootstrap_size, replace=True)
+            subj_rel_or, subj_error = subj_rel_or[bootstrap_idx], subj_error[bootstrap_idx]
+            gmodel = init_gmodel()
+            result = gmodel.fit(subj_error, x=subj_rel_or, b=0.03)
+            a_list[j, i] = result.params["a"]
+            if i % 100 == 0:
+                fit_list[0].extend(subj_rel_or)
+                fit_list[1].extend(result.best_fit)
+
+
+    perm_fit_list = [[], []]
+    a_perm_list = np.zeros((len(meg_subj_lst), n_permutations))
+    for i in range(n_permutations):
+        if i % 1000 == 0:
+            print("Permutation Test %i" % i)
+        for j, subj in enumerate(meg_subj_lst):
+            subj_rel_or, subj_error = subj_data[subj]
+            bootstrap_idx = np.random.choice(len(subj_rel_or), size=bootstrap_size, replace=True)
+            subj_rel_or, subj_error = subj_rel_or[bootstrap_idx], subj_error[bootstrap_idx]
+            np.random.shuffle(subj_rel_or)
+            gmodel = init_gmodel()
+            result = gmodel.fit(subj_error, x=subj_rel_or, b=0.03)
+            a_perm_list[j, i] = result.params["a"]
+            if i % 1000 == 0:
+                perm_fit_list[0].extend(subj_rel_or)
+                perm_fit_list[1].extend(result.best_fit)
+
+
+    a_list = a_list.mean(axis=0)
+    a_perm_list = a_perm_list.mean(axis=0)
+    p_value = 0
+
+    for i in range(n_bootstraps):
+        bootstrap_idx = np.random.choice(n_bootstraps, bootstrap_size, replace=True)
+        boot_a_list = a_list[bootstrap_idx]
+
+        bootstrap_idx = np.random.choice(n_permutations, bootstrap_size, replace=True)
+        boot_a_perm_list = a_perm_list[bootstrap_idx]
+
+        if boot_a_perm_list.mean() >= boot_a_list.mean():
+            p_value += 1
+        
+    p_value /= (n_bootstraps)
+
+    # also try with axis = 1?
+
+    rel_or, error = [], []
+    for subj in meg_subj_lst:
+        next_or, next_err = subj_data[subj]
+        rel_or.extend(next_or)
+        error.extend(next_err)
+
+    rel_or, error = np.array(rel_or), np.array(error)
+
+    gmodel = init_gmodel()
+    result = gmodel.fit(error, x=rel_or, b=0.03)
+
+    sorted_indices = np.argsort(rel_or)
+    rel_or = rel_or[sorted_indices]
+
+
+
+
+    print(p_value)
+    print(a_list)
+    print(a_perm_list)
+    plt.figure(figsize=(9, 6))
+    plt.scatter(rel_or, error, alpha=0.25)
+    #sns.lineplot(fit_list[0], fit_list[1], color="r", label="Experimental")
+    plt.plot(rel_or, result.best_fit[sorted_indices], color="red", linewidth=4, label="Experimental")
+    sns.lineplot(perm_fit_list[0], perm_fit_list[1], color="g", label="Permutation", linewidth=4)
+    plt.xlabel("Relative Orientation of Previous Trial")
+    plt.ylabel("Error on Current Trial")
+    plt.title("a={:.3f}      P={:.3f}".format(a_list.mean(), p_value))
+    plt.savefig("../Figures/final_results/DoG/DoG_plot_v2.png")
+
+
 def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
     rel_or, error = [], []
     for subj in meg_subj_lst:
@@ -146,7 +238,6 @@ def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
     plt.ylabel("Error on Current Trial")
     plt.title("a={:.3f}      P={:.3f}".format(a_list.mean(), p_num))
     plt.savefig("../Figures/final_results/DoG/DoG_plot.png")
-
 
 def run_all_subj():
     rel_or, error = [], []
@@ -214,7 +305,8 @@ def main():
         #run_subj(subj)
 
     #run_all_subj()
-    run_ptest()
+    #run_ptest()
+    run_ptestv2(n_bootstraps=5000, n_permutations=20000)
 
 if __name__ == "__main__":
     main()
