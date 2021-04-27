@@ -129,23 +129,21 @@ def run_ptestv2(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
                 perm_fit_list[1].extend(result.best_fit)
 
 
-    a_list = a_list.mean(axis=0)
-    a_perm_list = a_perm_list.mean(axis=0)
+    a_list = a_list.flatten()
+    a_perm_list = a_perm_list.flatten()
     p_value = 0
 
     for i in range(n_bootstraps):
-        bootstrap_idx = np.random.choice(n_bootstraps, bootstrap_size, replace=True)
+        bootstrap_idx = np.random.choice(len(a_list), bootstrap_size, replace=True)
         boot_a_list = a_list[bootstrap_idx]
 
-        bootstrap_idx = np.random.choice(n_permutations, bootstrap_size, replace=True)
+        bootstrap_idx = np.random.choice(len(a_perm_list), bootstrap_size, replace=True)
         boot_a_perm_list = a_perm_list[bootstrap_idx]
 
         if boot_a_perm_list.mean() >= boot_a_list.mean():
             p_value += 1
         
     p_value /= (n_bootstraps)
-
-    # also try with axis = 1?
 
     rel_or, error = [], []
     for subj in meg_subj_lst:
