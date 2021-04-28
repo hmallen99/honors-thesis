@@ -579,12 +579,12 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
     return
 
 def main():
-    #run_all_subjects(9, percept_data=False)
+    run_all_subjects(9)
     #run_all_subjects(9, time_shift=-1)
     #load_behavior("KA")
     #load_percept_data("KA")
     #iem_sd_all(9)
-    iem_sd_dog(9, n_exp_tests=10, n_bootstraps=1000, n_permutations=10000)
+    #iem_sd_dog(9, n_exp_tests=10, n_bootstraps=1000, n_permutations=10000)
 
 if __name__ == "__main__":
     main()

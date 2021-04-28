@@ -41,9 +41,9 @@ def generate_epoch_X(epochs, n=500, ch_picks=[], sample_rate=40):
     epochs.load_data().resample(sample_rate)
     meg_epochs = []
     if len(ch_picks) == 0:
-        meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0.4, 0.8, False)
+        meg_epochs = epochs.copy().pick_types(meg=True, eeg=False).crop(0.0, 0.4, False)
     else:
-        meg_epochs = epochs.copy().pick_channels(ch_picks).crop(-0.4, 0.0, False)
+        meg_epochs = epochs.copy().pick_channels(ch_picks).crop(0.0, 0.4, False)
     X = meg_epochs.get_data()
     return X[:n]
 
