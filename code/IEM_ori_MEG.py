@@ -270,7 +270,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         exp_accuracies_4_8[i] /= test_trials
 
         trial_accuracy = trial_accuracy / test_trials
-        exp_t_accs_x.extend(np.linspace(-0.4, -0.025, n_timesteps))
+        exp_t_accs_x.extend(np.linspace(0.0, 0.4, n_timesteps))
         exp_t_accs_y.extend(trial_accuracy)
 
         avg_response += trial_response
@@ -333,7 +333,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         perm_accuracies.append(temp_perm_accuracy)
 
         perm_trial_acc = perm_trial_acc / total_trials
-        perm_t_accs_x.extend(np.linspace(-0.4, -0.025, n_timesteps))
+        perm_t_accs_x.extend(np.linspace(0.0, 0.4, n_timesteps))
         perm_t_accs_y.extend(perm_trial_acc)
 
         perm_avg_response = total_response / total_trials
@@ -398,7 +398,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
             timestep_accuracy_p_values[j] += len(perm_results[perm_results[:, j] > exp_results[i, j]])
 
     timestep_accuracy_p_values /= (n_exp_tests * n_p_tests)
-    timesteps = np.linspace(-0.4, -0.025, n_timesteps) 
+    timesteps = np.linspace(0.0, 0.4, n_timesteps) 
     timestep_width = 0.4 / n_timesteps
     sig_ranges = [[]]
     for i in range(n_timesteps):
@@ -416,7 +416,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     sns.lineplot(perm_t_accs_x, perm_t_accs_y, label="Permutation Accuracy", ci="sd")
     for rng in sig_ranges:
         if len(rng) > 0:
-            plt.axvspan(max(rng[0], -0.4), rng[1], color="lightgreen", alpha=0.25)
+            plt.axvspan(max(rng[0], 0.0), rng[1], color="lightgreen", alpha=0.25)
     
     plt.legend()
     plt.ylim(0.05, 0.15)

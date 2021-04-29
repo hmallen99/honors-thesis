@@ -92,11 +92,10 @@ def make_pd_bar(exp_accs, perm_accs):
     return df
 
 def calc_omega_error(x, cov, WWT):
-    alpha = x[0]
-    rho = x[1]
-    sigma = x[2]
+    rho = x[0]
+    sigma = x[1]
 
-    tau_mat = np.outer(x[3:], x[3:])
+    tau_mat = np.outer(x[2:], x[2:])
 
     unique_variance = np.eye(tau_mat.shape[0]) * (1 - rho) * tau_mat
 
@@ -106,16 +105,18 @@ def calc_omega_error(x, cov, WWT):
     return np.sum(np.square(cov - omega))
 
 def fit_omega(cov, WWT):
-    x0 = np.zeros((cov.shape[0] + 3, 2))
-    x0[0, :] = 0.0
-    x0[2, :] = 0.2
-    x0[3, :, :] = 0.5 * np.ones((cov.shape[0], 2)) + 0.2 * np.random.randn(cov.shape[0], 2)
+    x0 = np.zeros((cov.shape[0] + 2))
+    x0[0] = 0.2
+    x0[1] = 7.5
+    x0[2:] = 0.5 * np.ones(cov.shape[0]) + 0.2 * np.random.randn(cov.shape[0])
 
-    result = optimize.minimize(calc_omega_error, x0[:, 0], args=(cov, WWT), method="L-BFGS-B")
+    bounds = [(-500, 500) for xs in x0]
+    bounds[0] = (0, 1)
+    bounds[1] = (0, 500)
+    result = optimize.minimize(calc_omega_error, x0, args=(cov, WWT), method="L-BFGS-B", tol=1e-6)
     x = result.x
 
-    tau_mat = np.outer(x[3:], x[3:])
-    alpha = x[0]
+    tau_mat = np.outer(x[2:], x[2:])
     rho = x[1]
     sigma = x[2]
 
@@ -133,7 +134,8 @@ def first_guess(W, actual_meg, log_omega_det, omega_inv):
     predictor_chans = np.zeros((W.shape[0], W.shape[1] + 1))
     predictor_chans[:, 1:] = np.copy(W)
 
-    residuals = np.tile(actual_meg, (predictor_chans.shape[1], 1)).T - predictor_chans
+    meg_resps = np.tile(actual_meg, (predictor_chans.shape[1], 1)).T
+    residuals = meg_resps - predictor_chans
 
     log_likelihood_W = const_log - 0.5 * (residuals * omega_inv.dot(residuals)).sum(0)
 
@@ -141,19 +143,29 @@ def first_guess(W, actual_meg, log_omega_det, omega_inv):
 
     first_g = baseline / log_likelihood_W[1:]
     first_g = (first_g - np.min(first_g)) / (np.max(first_g) - np.min(first_g))
+    
+    first_g[np.isnan(first_g)] = 0.0
+
+    if np.sum(first_g) == 0.0:
+        first_g[np.random.choice(len(first_g))] == 1.0
 
     return first_g
 
 
 def calc_log_likelihood(ch_resp, W, actual_meg, log_omega_det, omega_inv):
-    pred_meg = W @ ch_resp
-    residual_meg = actual_meg - pred_meg
+    pred_meg = np.dot(W, ch_resp)
+    residual_meg = (actual_meg - pred_meg).T
     const_log = -0.5 * (log_omega_det[1] + omega_inv.shape[0] * np.log(2*np.pi))
-    log_likelihood = const_log - 0.5 * (residual_meg.T @ omega_inv @ residual_meg)
+    log_likelihood = const_log - 0.5 * np.dot(residual_meg.T, omega_inv.dot(residual_meg))
     return -log_likelihood
 
 def maximize_params(starting_value, W, actual_meg, log_omega_det, omega_inv):
-    result = optimize.minimize(calc_log_likelihood, starting_value, args=(W, actual_meg, log_omega_det, omega_inv))
+    bounds = [(0, 1) for _ in starting_value]
+    result = optimize.minimize(calc_log_likelihood, starting_value, 
+                args=(W, actual_meg, log_omega_det, omega_inv), 
+                tol=1e-02, 
+                method='L-BFGS-B',
+                bounds=bounds)
     return result.x
 
 class BayesianIEM(object):
@@ -212,16 +224,25 @@ class BayesianIEM(object):
 
                 w_coeffs = np.linalg.lstsq(trnX_cv[trnidx, :], thistrn_tpt)[0]
                 W = w_coeffs.T
-                residuals = thistrn_tpt - W @ trnX_cv[trnidx, :] # might need to transpose w_coeffs here
+
+                residuals = thistrn_tpt.T - W @ trnX_cv[trnidx, :].T # might need to transpose w_coeffs here
 
                 cov_residual = np.cov(residuals)
 
                 omega_inv, log_omega_det = fit_omega(cov_residual, W @ W.T) # might need to transpose both w_coeffs
 
-                starting_value = first_guess(W, thistst_tpt, log_omega_det, omega_inv)
+                tst_results = []
+                starting_vals = np.linalg.lstsq(w_coeffs.T, thistst_tpt.T)[0].T
 
-                chan_resp_cv_coeffs[tstidx, :, tt] = maximize_params(starting_value, W, thistst_tpt, log_omega_det, omega_inv)
+                for j in range(thistst_tpt.shape[0]):
 
+                    #starting_value = first_guess(W, thistst_tpt[j], log_omega_det, omega_inv)
+                    starting_value = starting_vals[j]
+
+                    result = maximize_params(starting_value, W, thistst_tpt[j], log_omega_det, omega_inv)
+                    #print(result)
+                    tst_results.append(result)
+                chan_resp_cv_coeffs[tstidx, :, tt] = np.array(tst_results)
         return chan_resp_cv_coeffs
 
     def run_subject(self, subj, permutation_test=False, shuffle_data=False, plot=False, percept_data=False, shuffle_idx=[], time_shift=0):
@@ -579,12 +600,12 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
     return
 
 def main():
-    #run_all_subjects(9, percept_data=False)
+    run_all_subjects(9, n_exp_tests=10, n_p_tests=100)
     #run_all_subjects(9, time_shift=-1)
     #load_behavior("KA")
     #load_percept_data("KA")
     #iem_sd_all(9)
-    iem_sd_dog(9, n_exp_tests=10, n_bootstraps=1000, n_permutations=10000)
+    #iem_sd_dog(9, n_exp_tests=10, n_bootstraps=1000, n_permutations=10000)
 
 if __name__ == "__main__":
     main()
