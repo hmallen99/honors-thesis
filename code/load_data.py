@@ -10,7 +10,7 @@ def load_y(subj, n=500, n_classes=2, use_off=True):
     y_path = "../../../../MEG/Behaviour/Sub%d_beh.mat" % new_beh_lst[subj]
     data = loadmat(y_path)["TgtOrs"]
     if n_classes == -1:
-        return data.flatten().astype(float)[:n]
+        return data.flatten().astype(float)[:n] + 90
     offset = 0
     if use_off:
         offset = 180 / (n_classes * 2)

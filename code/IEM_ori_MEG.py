@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.io import loadmat
+from scipy.stats import vonmises
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -189,16 +190,19 @@ class InvertedEncoder(object):
         
         return bins, bin_sizes
 
-    def run_sd_dog(self, subj, permutation_test=False):
-        _, trng, _ = load_data(subj)
+    def run_sd_dog(self, subj, permutation_test=False, ret_targ=False, time_shift=0):
+        _, trng, _ = load_data(subj, time_shift=time_shift)
         trn_repnum = self.make_trn_repnum(trng)
         diffs = self.get_diffs(subj)
         diffs = diffs[~np.isnan(trn_repnum)]
         if permutation_test:
             np.random.shuffle(diffs)
         shuffle_idx = np.random.choice(len(trng), len(trng), replace=False)
-        coeffs_shift, _, _ = self.run_subject(subj, shuffle_data=True, shuffle_idx=shuffle_idx)
+        coeffs_shift, _, targ_ori = self.run_subject(subj, shuffle_data=True, shuffle_idx=shuffle_idx)
         
+        if ret_targ:
+
+            return coeffs_shift, diffs, targ_ori
         return coeffs_shift, diffs
             
 
@@ -218,8 +222,6 @@ def n_correct_tsteps(coeffs, targ_ori, n_trials):
             if np.argmax(coeffs[i, :, j]) == targ_ori:
                 n[j] += 1
     return n
-
-#subjlist = ["AK", "DI", "HHy", "HN", "JL", "KA", "MF", "NN", "SoM", "TE", "VA", "YMi"]
 
 def make_pd_bar(exp_accs, perm_accs):
     data_lst = []
@@ -250,6 +252,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     exp_results = np.zeros((n_exp_tests, n_timesteps))
     exp_timestep_ch_response = np.zeros((n_ori_chans, n_timesteps))
     exp_accuracies_4_8 = np.zeros(n_exp_tests)
+    center_chan_accuracies = []
     for i in range(n_exp_tests):
         print("Trial %d" % (i + 1))
         test_trials = 0
@@ -266,11 +269,12 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
             trial_response += np.sum(tmean, 0)
             total_trials += len(trng_cv)
             test_trials += len(trng_cv)
+            center_chan_accuracies.extend(coeffs[:, targ_ori, :])
         exp_accuracies[i] /= test_trials
         exp_accuracies_4_8[i] /= test_trials
 
         trial_accuracy = trial_accuracy / test_trials
-        exp_t_accs_x.extend(np.linspace(-0.4, -0.025, n_timesteps))
+        exp_t_accs_x.extend(np.linspace(0.0, 0.4, n_timesteps))
         exp_t_accs_y.extend(trial_accuracy)
 
         avg_response += trial_response
@@ -333,7 +337,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         perm_accuracies.append(temp_perm_accuracy)
 
         perm_trial_acc = perm_trial_acc / total_trials
-        perm_t_accs_x.extend(np.linspace(-0.4, -0.025, n_timesteps))
+        perm_t_accs_x.extend(np.linspace(0.0, 0.4, n_timesteps))
         perm_t_accs_y.extend(perm_trial_acc)
 
         perm_avg_response = total_response / total_trials
@@ -398,7 +402,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
             timestep_accuracy_p_values[j] += len(perm_results[perm_results[:, j] > exp_results[i, j]])
 
     timestep_accuracy_p_values /= (n_exp_tests * n_p_tests)
-    timesteps = np.linspace(-0.4, -0.025, n_timesteps) 
+    timesteps = np.linspace(0.0, 0.4, n_timesteps) 
     timestep_width = 0.4 / n_timesteps
     sig_ranges = [[]]
     for i in range(n_timesteps):
@@ -416,7 +420,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     sns.lineplot(perm_t_accs_x, perm_t_accs_y, label="Permutation Accuracy", ci="sd")
     for rng in sig_ranges:
         if len(rng) > 0:
-            plt.axvspan(max(rng[0], -0.4), rng[1], color="lightgreen", alpha=0.25)
+            plt.axvspan(max(rng[0], 0.0), rng[1], color="lightgreen", alpha=0.25)
     
     plt.legend()
     plt.ylim(0.05, 0.15)
@@ -424,102 +428,138 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     plt.savefig("../Figures/IEM/python_files/timestep_accuracy.png")
     plt.clf()
 
-def calc_sd_bias(coeffs, timestep):
-    weights = np.array([0, -0.25, -0.5, -1, 0, 1, 0.5, 0.25, 0]) * 20
+    return np.array(center_chan_accuracies)
 
-    return np.dot(np.minimum(np.maximum(coeffs[:, :, timestep], 0), 1), weights)
+def calc_sd_bias(coeffs, timestep, diffs):
+    #return mean of von mises fit at channel response
+    weights = np.arange(0, 161, 20)
+    bias = np.dot(np.maximum(coeffs[:, :, timestep], 0), weights)
+    ch_resp_sum = np.sum(np.maximum(coeffs[:, :, timestep], 0), axis=1)
+    ch_resp_sum[ch_resp_sum == 0] = 1e6
+    bias = bias / ch_resp_sum
+            
+    return np.maximum(np.minimum(bias, 160), 0) - 80
 
-def run_DoG_trial(ch_bias, diffs, bootstrap_size=10000, permutation_test=False):
-    bootstrap_idx = np.random.choice(len(diffs), size=bootstrap_size, replace=True)
-    ch_bias_bootstrap = ch_bias[bootstrap_idx]
-    diffs_bootstrap = diffs[bootstrap_idx]
-
-    diffs_bootstrap = diffs_bootstrap[np.abs(ch_bias_bootstrap) <= 40]
-    ch_bias_bootstrap = ch_bias_bootstrap[np.abs(ch_bias_bootstrap) <= 40]
-
-    ch_bias_bootstrap = ch_bias_bootstrap[np.abs(diffs_bootstrap) <= 60]
-    diffs_bootstrap = diffs_bootstrap[np.abs(diffs_bootstrap) <= 60]
-
-    if permutation_test:
-        np.random.shuffle(diffs_bootstrap)
-    gmodel = init_gmodel()
-    result = gmodel.fit(ch_bias_bootstrap, x=diffs_bootstrap, b=0.03)
-    return result.best_fit, diffs_bootstrap, result.params["a"]
-
-def iem_sd_dog(n_ori_chans, n_exp_tests=2, n_bootstraps=1000, n_permutations=10000, n_timesteps=16):
+def iem_sd_dog(n_ori_chans, n_bins=15, n_exp_tests=2, n_bootstraps=1000, bootstrap_size=10000, n_permutations=100000, n_timesteps=16):
     model = InvertedEncoder(n_ori_chans)
-    ch_bias_list = [[] for _ in range(16)]
-    diffs_list = []
+    #meg_subj_lst = ["KA", "AK"]
+    
+
+    a_list = np.zeros((n_timesteps, n_permutations))
+    a_perm_list = np.zeros((n_timesteps, n_permutations))
+
+    bins = np.zeros((n_timesteps, n_bins, len(meg_subj_lst), n_exp_tests))
+    perm_bins = np.zeros((n_timesteps, n_bins, len(meg_subj_lst), n_exp_tests))
+
+    for count, subj in enumerate(meg_subj_lst):
+        print(subj)
+        diffs_list = []
 
 
-    for i in range(n_exp_tests):
-        print("Experimental Test: %i" % i)
-
-        for subj in meg_subj_lst:
+        for i in range(n_exp_tests):
+            print("Experimental Test: %i" % i)
             coeffs, diffs = model.run_sd_dog(subj)
             diffs_list.extend(diffs)
+            
+
+            
+            diff_bins = np.minimum(np.floor((diffs + 90) / (180 / n_bins)), n_bins - 1).astype(int)
+            diff_bins_copy = np.copy(diff_bins)
+            np.random.shuffle(diff_bins_copy)
 
             for j in range(n_timesteps):
-                ch_bias_list[j].extend(calc_sd_bias(coeffs, j))
+
+                for k in range(n_bins):
+                    bin_response = np.mean(np.argmax(coeffs[diff_bins == k, :, j], axis=1) * 20) - 80
+                    bins[j, k, count, i] = bin_response
+                    
+                    
+                    
+                    bin_response = np.mean(np.argmax(coeffs[diff_bins_copy == k, :, j], axis=1) * 20) - 80
+                    perm_bins[j, k, count, i] = bin_response
+
+    bin_half_width = (180 / n_bins) / 2
+    xs = np.linspace(-90 + bin_half_width, 90 - bin_half_width, n_bins)
+    p_values = np.zeros(n_timesteps)
+    fit_list = [[[], []] for i in range(16)]
+    perm_fit_list = [[[], []] for i in range(16)]
+    for i in range(n_timesteps):
+        print(i)
+        for k in range(n_permutations):
+            #print(i)
+            diff_lst = []
+            bias_lst = []
+            perm_bias_lst = []
 
 
-    diffs_list = np.array(diffs_list)
-    ch_bias = np.array(ch_bias_list)
-    print(ch_bias[0])    
+            for j in range(n_bins):
+            
+                ts_bin = bins[i, j, :, :].flatten()
+                ts_perm_bin = perm_bins[i, j, :, :].flatten()
+
+                boot = np.random.choice(ts_bin, bootstrap_size, replace=True)
+                bias_lst.extend(boot)
+                
+                boot_perm = np.random.choice(ts_perm_bin, bootstrap_size, replace=True)
+                perm_bias_lst.extend(boot_perm)
+
+                diff_lst.extend(np.ones(bootstrap_size) * xs[j])
+
+
+            shuffle_idx = np.random.choice(bootstrap_size * n_bins, bootstrap_size * n_bins, replace=False)
+            diff_lst = np.array(diff_lst)[shuffle_idx]
+            perm_diff_lst = np.copy(diff_lst)
+            bias_lst = np.array(bias_lst)[shuffle_idx]
+            perm_bias_lst = np.array(perm_bias_lst)[shuffle_idx]
+
+            diff_lst = diff_lst[np.abs(bias_lst) < 30]
+            bias_lst = bias_lst[np.abs(bias_lst) < 30]
+
+            perm_diff_lst = perm_diff_lst[np.abs(perm_bias_lst) < 30]
+            perm_bias_lst = perm_bias_lst[np.abs(perm_bias_lst) < 30]
+
+
+            np.random.shuffle(perm_diff_lst)
+
+
+            model = init_gmodel()
+            result = model.fit(bias_lst, x=diff_lst, b=0.03)
+            a_list[i, k] = result.params["a"]
+            
+
+            model = init_gmodel()
+            perm_result = model.fit(perm_bias_lst, x=perm_diff_lst, b=0.03)
+            a_perm_list[i, k] = perm_result.params["a"]
+
+            if np.abs(result.params["a"]) <= np.abs(perm_result.params["a"]):
+                p_values[i] += 1
+
+            if k % 50 == 0:
+                fit_list[i][0].extend(result.best_fit)
+                fit_list[i][1].extend(diff_lst)
+
+                perm_fit_list[i][0].extend(perm_result.best_fit)
+                
+                perm_fit_list[i][1].extend(perm_diff_lst)
+
+    p_values /= (n_permutations)
 
     
-    a_list = np.zeros((n_timesteps, n_bootstraps))
-    p_values = np.zeros(n_timesteps)
-    for j in range(n_timesteps):
-        print("timestep: %d" % j)
-        dog_fit_list = []
-        diffs_bootstrap_list = []
+    #perm_fit_list = np.array(perm_fit_list)
+    #fit_list = np.array(fit_list)
 
-        dog_fit_p_list = []
-        diffs_bootstrap_p_list = []
-
-        for i in range(n_bootstraps):
-            dog_fit, diffs_bootstrap, a_bootstrap = run_DoG_trial(ch_bias[j], diffs)
-            a_list[j, i] = a_bootstrap
-            if i % 10 == 0:
-                dog_fit_list.extend(dog_fit)
-                diffs_bootstrap_list.extend(diffs_bootstrap)
-            
-        for i in range(n_permutations):
-            dog_fit, diffs_bootstrap, a_bootstrap = run_DoG_trial(ch_bias[j], diffs, permutation_test=True)
-            p_values[j] += len(a_list[j][a_list[j] <= a_bootstrap])
-            if i % 100 == 0:
-                dog_fit_p_list.extend(dog_fit)
-                diffs_bootstrap_p_list.extend(diffs_bootstrap)
-
-        p_values[j] /= (n_permutations * n_bootstraps)
-
+    for i in range(n_timesteps):
+        print(i)
+    
         plt.figure(figsize=(9, 6))
-        plt.scatter(diffs_list, ch_bias[j], alpha=0.25)
-        sns.lineplot(diffs_bootstrap_list, dog_fit_list, color="r", label="Bootstrapped DoG", linewidth=3.5)
-        sns.lineplot(diffs_bootstrap_p_list, dog_fit_p_list, color="g", label="Permutation DoG", linewidth=3.5)
-        plt.legend()
-        plt.xlabel("Relative orientation of previous trial")
-        plt.ylabel("Channel response bias on current trial")
-        plt.xlim((-60, 60))
-        plt.ylim((-40, 40))
-        plt.title("a={:.3f}        P={:.3f}".format(a_list[j].mean(), p_values[j]))
-        plt.savefig("../Figures/final_results/bias/bias_dog_t%d.png" % j)
+        sns.lineplot(fit_list[i][1], fit_list[i][0], label="Experimental", linewidth=4, color="red")
+        sns.lineplot(perm_fit_list[i][1], perm_fit_list[i][0], label="Permutation", linewidth=4, color="green")
+        plt.ylim((-20, 20))
+        plt.title("a: {:.3f}      p: {:.3f}".format(a_list[i].mean(), p_values[i]))
+        plt.xlabel("Relative Previous Orientation (degrees)")
+        plt.ylabel("Channel Response Bias (degrees)")
+        plt.savefig("../Figures/final_results/bias/bias_dog_t%i.png" % i)
         plt.clf()
-
-    print(a_list.mean(1))
-    print(a_list.max(0))
-    plt.figure(figsize=(9, 6))
-    xs = np.linspace(0, 0.375, 16)
-    ys = a_list.mean(axis=1)
-    plt.bar(xs, ys, width=0.025)
-    for i in range(9):
-        if p_values[i] <= 0.05:
-            plt.text(xs[i], ys[i]+0.01, "*")
-    plt.savefig("../Figures/final_results/bias/bias_all.png")
-            
-    return
-
 
 def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_tests=25, n_timesteps=16):
     IEM = InvertedEncoder(n_ori_chans)
@@ -582,7 +622,7 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
         plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
         plt.ylabel("Channel response")
-        plt.title("Channel response binned by previous orientation, t=%d" % ((j + 16) * 25))
+        plt.title("Channel response binned by previous orientation, t=%d" % ((j) * 25))
 
         ax1 = figure.add_subplot(3, 1, 2)
         im1 = ax1.imshow(perm_bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal", vmin=0.15, vmax=0.35)
@@ -610,125 +650,57 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         plt.clf()
     return
 
-def iem_sd_all_v2(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_tests=25, n_timesteps=16):
+def correlate_prev_curr():
+    current = run_all_subjects(9, n_exp_tests=2, n_p_tests=1)
+    current = current.mean(0)
+    for subj in meg_subj_lst:
+        saved_data.pop(subj)
+    previous = run_all_subjects(9, time_shift=-1, n_exp_tests=2, n_p_tests=1)
+    previous = previous.mean(0)
+
+    print(previous.shape)
+    print(current.shape)
+
+    R = np.corrcoef(np.array([previous, current]), rowvar=False)
+    plt.imshow(R)
+    plt.savefig("../Figures/final_results/corr/corr.png")
+    plt.clf()
+
+def calc_previous_selectivity(n_ori_chans, n_exp_tests=25, bootstrap_size=1000, n_bootstraps=100, n_permutations=1000):
     IEM = InvertedEncoder(n_ori_chans)
-    avg_response = np.zeros((n_ori_chans, n_timesteps))
+    close_diffs = []
+    far_diffs = []
+    targ_ori = None
 
-    coeffs_list = []
-    diffs_list = []
-   
-    bin_accuracies = np.zeros((n_exp_tests, n_bins, n_ori_chans, n_timesteps))
     for i in range(n_exp_tests):
-        print("Experimental Test: %i" % i)
         for subj in meg_subj_lst:
-            coeffs, diffs = IEM.run_sd_dog(subj)
-            coeffs_list.extend(coeffs)
-            diffs_list.extend(diffs)
-        
-    bins = np.zeros((n_bins, n_ori_chans, n_timesteps))
-    
-    coeffs_list = np.array(coeffs_list)
-    diffs_list = np.array(diffs_list).astype(int)
+            
+            coeffs, diffs, targ_ori = IEM.run_sd_dog(subj, ret_targ=True, time_shift=-1)
 
-    for i in range(n_bins):
-        bins[i] = np.sum(coeffs_list[diffs_list == i], axis=0)
-        bins[i] /= len(diffs_list[diffs_list == i])
+            close_diffs.extend(coeffs[np.abs(diffs) <= 10])
+            far_diffs.extend(coeffs[np.abs(diffs) > 10])
 
-    avg_response = coeffs_list.mean(axis=0)
+    close_diffs = np.array(close_diffs)
+    far_diffs = np.array(far_diffs)
 
-    perm_bin_sizes = np.zeros(n_bins)
-    perm_bins = np.zeros((n_bins, n_ori_chans, n_timesteps))
-    perm_diffs_list = diffs_list[:]
-    for i in range(n_p_tests):
-        for j in range(n_bins):
-            np.random.shuffle(perm_diffs_list)
-            perm_bins[j] += np.sum(coeffs_list[perm_diffs_list == j], axis=0)
-            perm_bin_sizes[j] += len(perm_diffs_list[perm_diffs_list==j])
+    close_accuracy = n_correct_tsteps(close_diffs, targ_ori, close_diffs.shape[0]) / close_diffs.shape[0]
+    far_accuracy = n_correct_tsteps(far_diffs, targ_ori, far_diffs.shape[0]) / far_diffs.shape[0]
 
-    for i in range(n_bins):
-        perm_bins[i] /= perm_bin_sizes[i]
+    plt.plot(close_accuracy, label="close")
+    plt.plot(far_accuracy, label="Far")
+    plt.legend()
+    plt.savefig("../Figures/final_results/IEM/prev_selectivity")
+    plt.clf()
+            
+
 
     
-
-
-
-    perm_bin_accuracies = np.zeros((n_p_tests, n_bins, n_ori_chans, n_timesteps))
-    for i in range(n_p_tests):
-        print("Permutation Test: %i" %i)
-        bin_sizes = np.zeros(n_bins)
-        bins = np.zeros((n_bins, n_ori_chans, n_timesteps))
-        for subj in meg_subj_lst:
-            temp_bins, temp_bin_sizes = IEM.run_sd_subject(subj, n_bins=n_bins, permutation_test=True)
-            bins += temp_bins
-            bin_sizes += temp_bin_sizes
-        
-        for j in range(n_timesteps):
-            perm_bin_accuracies[i, :, :, j] = bins[:, :, j] / bin_sizes[:, None]
-
-    perm_avg_bin_accuracies = np.zeros(perm_bin_accuracies.shape)
-    avg_bin_accuracies = np.zeros(bin_accuracies.shape)
-    for i in range(n_p_tests):
-        for j in range(n_timesteps):
-            perm_avg_bin_accuracies[i, :, :, j] += perm_bin_accuracies[i, :, :, j] - avg_response[:, j]
-        
-    for i in range(n_exp_tests):
-        for j in range(n_timesteps):
-            avg_bin_accuracies[i, :, :, j] += bin_accuracies[i, :, :, j] - avg_response[:, j]
-
-    ptest_comp = np.zeros((n_bins, n_ori_chans, n_timesteps))
-    for i in range(n_p_tests):
-        for j in range(n_exp_tests):
-            gr_eq_vals = np.abs(perm_avg_bin_accuracies[i, :, :, :]) >= np.abs(avg_bin_accuracies[j, :, :, :])
-            ptest_comp[gr_eq_vals] += 1.0
-    ptest_comp /= (n_p_tests * n_exp_tests)
-        
-    for j in range(n_timesteps):
-        figure = plt.figure(figsize=(8,15))
-
-        
-
-        ax0 = figure.add_subplot(3, 1, 1)
-        im0 = ax0.imshow(bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal", vmin=0.15, vmax=0.35)
-        ax0.set_xlabel("Relative Previous Orientation")
-        figure.colorbar(im0, ax=ax0)
-        plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
-        plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
-        plt.ylabel("Channel response")
-        plt.title("Channel response binned by previous orientation, t=%d" % j)
-
-        ax1 = figure.add_subplot(3, 1, 2)
-        im1 = ax1.imshow(perm_bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal", vmin=0.15, vmax=0.35)
-        ax1.set_xlabel("Relative Previous Orientation")
-        figure.colorbar(im1, ax=ax1)
-
-        plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
-        plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
-        plt.ylabel("Channel response")
-        plt.title("Permutation")
-
-        ax2 = figure.add_subplot(3, 1, 3)
-        im2 = ax2.imshow(ptest_comp[:, :, j].T, aspect="equal", vmin=0, vmax=1)
-        ax2.set_xlabel("Relative Previous Orientation")
-        figure.colorbar(im2, ax=ax2)
-
-        plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
-        plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
-        plt.ylabel("Channel response")
-        plt.title("P Value")
-        
-        
-        
-        plt.savefig("../Figures/IEM/python_files/sd_all_t%d.png" % j)
-        plt.clf()
-    return
 
 def main():
-    #run_all_subjects(9, percept_data=False)
-    run_all_subjects(9, time_shift=-1)
-    #load_behavior("KA")
-    #load_percept_data("KA")
+    #correlate_prev_curr()
+    #iem_sd_dog(9, n_bins=45, n_exp_tests=100, n_bootstraps=100, n_permutations=1000, bootstrap_size=1000)
     #iem_sd_all(9)
-    #iem_sd_dog(9, n_exp_tests=25, n_bootstraps=1000, n_permutations=10000)
+    calc_previous_selectivity(9, n_exp_tests=100)
 
 if __name__ == "__main__":
     main()
