@@ -190,16 +190,19 @@ class InvertedEncoder(object):
         
         return bins, bin_sizes
 
-    def run_sd_dog(self, subj, permutation_test=False):
-        _, trng, _ = load_data(subj)
+    def run_sd_dog(self, subj, permutation_test=False, ret_targ=False, time_shift=0):
+        _, trng, _ = load_data(subj, time_shift=time_shift)
         trn_repnum = self.make_trn_repnum(trng)
         diffs = self.get_diffs(subj)
         diffs = diffs[~np.isnan(trn_repnum)]
         if permutation_test:
             np.random.shuffle(diffs)
         shuffle_idx = np.random.choice(len(trng), len(trng), replace=False)
-        coeffs_shift, _, _ = self.run_subject(subj, shuffle_data=True, shuffle_idx=shuffle_idx)
+        coeffs_shift, _, targ_ori = self.run_subject(subj, shuffle_data=True, shuffle_idx=shuffle_idx)
         
+        if ret_targ:
+
+            return coeffs_shift, diffs, targ_ori
         return coeffs_shift, diffs
             
 
@@ -219,8 +222,6 @@ def n_correct_tsteps(coeffs, targ_ori, n_trials):
             if np.argmax(coeffs[i, :, j]) == targ_ori:
                 n[j] += 1
     return n
-
-#subjlist = ["AK", "DI", "HHy", "HN", "JL", "KA", "MF", "NN", "SoM", "TE", "VA", "YMi"]
 
 def make_pd_bar(exp_accs, perm_accs):
     data_lst = []
@@ -439,26 +440,9 @@ def calc_sd_bias(coeffs, timestep, diffs):
             
     return np.maximum(np.minimum(bias, 160), 0) - 80
 
-def run_DoG_trial(ch_bias, diffs, bootstrap_size=10000, permutation_test=False):
-    bootstrap_idx = np.random.choice(len(diffs), size=bootstrap_size, replace=True)
-    ch_bias_bootstrap = ch_bias[bootstrap_idx]
-    diffs_bootstrap = diffs[bootstrap_idx]
-
-    diffs_bootstrap = diffs_bootstrap[np.abs(ch_bias_bootstrap) <= 40]
-    ch_bias_bootstrap = ch_bias_bootstrap[np.abs(ch_bias_bootstrap) <= 40]
-
-    ch_bias_bootstrap = ch_bias_bootstrap[np.abs(diffs_bootstrap) <= 60]
-    diffs_bootstrap = diffs_bootstrap[np.abs(diffs_bootstrap) <= 60]
-
-    if permutation_test:
-        np.random.shuffle(diffs_bootstrap)
-    gmodel = init_gmodel()
-    result = gmodel.fit(ch_bias_bootstrap, x=diffs_bootstrap, b=0.03)
-    return result.best_fit, diffs_bootstrap, result.params["a"]
-
 def iem_sd_dog(n_ori_chans, n_bins=15, n_exp_tests=2, n_bootstraps=1000, bootstrap_size=10000, n_permutations=100000, n_timesteps=16):
     model = InvertedEncoder(n_ori_chans)
-    meg_subj_lst = ["KA", "AK"]
+    #meg_subj_lst = ["KA", "AK"]
     
 
     a_list = np.zeros((n_timesteps, n_permutations))
@@ -577,10 +561,6 @@ def iem_sd_dog(n_ori_chans, n_bins=15, n_exp_tests=2, n_bootstraps=1000, bootstr
         plt.savefig("../Figures/final_results/bias/bias_dog_t%i.png" % i)
         plt.clf()
 
-
-
-
-
 def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_tests=25, n_timesteps=16):
     IEM = InvertedEncoder(n_ori_chans)
     avg_response = np.zeros((n_ori_chans, n_timesteps))
@@ -642,7 +622,7 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         plt.xticks(ticks=np.arange(-0.5, n_bins+0.5, 1), labels=np.linspace(-90, 90, n_bins+1).astype(int))
         plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
         plt.ylabel("Channel response")
-        plt.title("Channel response binned by previous orientation, t=%d" % ((j + 16) * 25))
+        plt.title("Channel response binned by previous orientation, t=%d" % ((j) * 25))
 
         ax1 = figure.add_subplot(3, 1, 2)
         im1 = ax1.imshow(perm_bin_accuracies[:, :, :, j].mean(axis=0).T, aspect="equal", vmin=0.15, vmax=0.35)
@@ -686,10 +666,41 @@ def correlate_prev_curr():
     plt.savefig("../Figures/final_results/corr/corr.png")
     plt.clf()
 
+def calc_previous_selectivity(n_ori_chans, n_exp_tests=25, bootstrap_size=1000, n_bootstraps=100, n_permutations=1000):
+    IEM = InvertedEncoder(n_ori_chans)
+    close_diffs = []
+    far_diffs = []
+    targ_ori = None
+
+    for i in range(n_exp_tests):
+        for subj in meg_subj_lst:
+            
+            coeffs, diffs, targ_ori = IEM.run_sd_dog(subj, ret_targ=True, time_shift=-1)
+
+            close_diffs.extend(coeffs[np.abs(diffs) <= 10])
+            far_diffs.extend(coeffs[np.abs(diffs) > 10])
+
+    close_diffs = np.array(close_diffs)
+    far_diffs = np.array(far_diffs)
+
+    close_accuracy = n_correct_tsteps(close_diffs, targ_ori, close_diffs.shape[0]) / close_diffs.shape[0]
+    far_accuracy = n_correct_tsteps(far_diffs, targ_ori, far_diffs.shape[0]) / far_diffs.shape[0]
+
+    plt.plot(close_accuracy, label="close")
+    plt.plot(far_accuracy, label="Far")
+    plt.legend()
+    plt.savefig("../Figures/final_results/IEM/prev_selectivity")
+    plt.clf()
+            
+
+
+    
+
 def main():
     #correlate_prev_curr()
     #iem_sd_dog(9, n_bins=45, n_exp_tests=100, n_bootstraps=100, n_permutations=1000, bootstrap_size=1000)
-    iem_sd_all(9)
+    #iem_sd_all(9)
+    calc_previous_selectivity(9, n_exp_tests=100)
 
 if __name__ == "__main__":
     main()

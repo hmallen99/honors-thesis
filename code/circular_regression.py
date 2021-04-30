@@ -45,16 +45,19 @@ def calc_theta_diff_all(dec_all, stim_all):
 
     return theta_diffs
 
-def calc_mean_error(dec, stim):
+def calc_mean_error(dec, stim, abs_v=False, max_error=10):
     error = calc_theta_diff(dec, stim)
+    error = error[np.abs(error) < max_error]
+    if abs_v:
+        error = np.abs(error)
     error = np.deg2rad(error)
     R = (1 / len(dec)) * np.sum(np.exp(1j * error))
     return np.angle(R)
 
-def calc_mean_error_all(dec_all, stim_all):
+def calc_mean_error_all(dec_all, stim_all, abs_v=False):
     errors = []
     for i in range(16):
-        errors.append(calc_mean_error(dec_all[i], stim_all[i]))
+        errors.append(calc_mean_error(dec_all[i], stim_all[i]), abs_v)
         
     return np.array(errors)
 
@@ -173,8 +176,8 @@ def run_ptest(loader, n_p_tests=100, n_exp_tests=10):
         t_error = np.array(theta_diffs[i])
 
 
-        t_diffs = all_diffs[np.abs(t_error) < 30]
-        t_error = t_error[np.abs(t_error) < 30]
+        t_diffs = all_diffs[np.abs(t_error) < 10]
+        t_error = t_error[np.abs(t_error) < 10]
 
         t_error = t_error[np.abs(t_diffs) < 60]
         t_diffs = t_diffs[np.abs(t_diffs) < 60]
@@ -187,7 +190,10 @@ def run_ptest(loader, n_p_tests=100, n_exp_tests=10):
         plt.figure(figsize=(9, 6))
         plt.scatter(t_diffs, t_error, alpha=0.25)
         plt.plot(sorted_diffs, sorted_theta_diffs, label="Best Fit", color="r", linewidth=4)
+        plt.xlim((-60, 60))
+        plt.ylim((-20, 20))
         plt.legend()
+        plt.title("a: %3f" % result.params["a"])
         plt.savefig("../Figures/circ_reg/DoG%i.png" % i)
         plt.clf()
 
@@ -203,7 +209,7 @@ def run_ptest(loader, n_p_tests=100, n_exp_tests=10):
 
 def main():
     loader = data_loader()
-    run_ptest(loader, n_exp_tests=1)
+    run_ptest(loader, n_exp_tests=100)
     
 
 
