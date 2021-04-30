@@ -52,7 +52,7 @@ def calc_mean_error(dec, stim, abs_v=False, max_error=10):
         error = np.abs(error)
     error = np.deg2rad(error)
     R = (1 / len(dec)) * np.sum(np.exp(1j * error))
-    return np.angle(R)
+    return np.rad2deg(np.angle(R))
 
 def calc_mean_error_all(dec_all, stim_all, abs_v=False):
     errors = []
@@ -120,7 +120,7 @@ class CircularRegression(object):
 
                 inds = np.where(out[:, 1] < 0)[0]
                 ang_hat[inds] = ang_hat[inds] + np.pi
-                ang_hat = np.mod(ang_hat, 2*np.pi) * 180 / np.pi / 2
+                ang_hat = np.mod(ang_hat, 2 * np.pi) * 180 / np.pi / 2
 
                 test_angles[i,len(y_test) * k_num: len(y_test) * (k_num + 1)] = y_test
                 pred_angles[i,len(y_test) * k_num: len(y_test) * (k_num + 1)] = ang_hat

@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.io import loadmat
 from scipy.stats import vonmises
+from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -99,11 +100,16 @@ class InvertedEncoder(object):
 
         chan_resp_cv_coeffs = np.zeros((trn_cv_coeffs.shape[0], len(self.chan_center), trn_cv_coeffs.shape[2]))
 
-        n_reps = int(np.max(trn_repnum))
+        #n_reps = int(np.max(trn_repnum))
 
-        for ii in range(n_reps):
-            trnidx = trn_repnum != ii
-            tstidx = trn_repnum == ii
+        #for ii in range(n_reps):
+        #    trnidx = trn_repnum != ii
+        #    tstidx = trn_repnum == ii
+
+        kfold = KFold(n_splits=5, shuffle=True)
+        for train, test in kfold.split(trn_cv_coeffs):
+            trnidx = train
+            tstidx = test
 
             thistrn = trn_cv_coeffs[trnidx, :, :]
             thistst = trn_cv_coeffs[tstidx, :, :]
@@ -288,9 +294,9 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     avg_response = avg_response / total_trials
     exp_timestep_ch_response /= total_trials
     plt.figure(figsize=(8, 8))
-    plt.imshow(exp_timestep_ch_response, aspect="equal")
+    plt.imshow(exp_timestep_ch_response, aspect="equal", vmin=0.18, vmax=0.35)
     plt.colorbar()
-    plt.xticks(ticks=np.arange(-0.5, n_timesteps+0.5, 1), labels=np.arange(-400, -25, 25).astype(int))
+    plt.xticks(ticks=np.arange(-0.5, n_timesteps+0.5, 1), labels=np.arange(0, 400, 25).astype(int))
     plt.yticks(ticks=np.arange(-0.5, n_ori_chans+0.5, 1), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
     plt.xlabel("Timestep (millisencods)")
     plt.ylabel("Channel")
@@ -337,7 +343,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         perm_accuracies.append(temp_perm_accuracy)
 
         perm_trial_acc = perm_trial_acc / total_trials
-        perm_t_accs_x.extend(np.linspace(0.0, 0.4, n_timesteps))
+        perm_t_accs_x.extend(np.linspace(0.0, 0.375, n_timesteps))
         perm_t_accs_y.extend(perm_trial_acc)
 
         perm_avg_response = total_response / total_trials
@@ -402,7 +408,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
             timestep_accuracy_p_values[j] += len(perm_results[perm_results[:, j] > exp_results[i, j]])
 
     timestep_accuracy_p_values /= (n_exp_tests * n_p_tests)
-    timesteps = np.linspace(0.0, 0.4, n_timesteps) 
+    timesteps = np.linspace(0.0, 0.375, n_timesteps) 
     timestep_width = 0.4 / n_timesteps
     sig_ranges = [[]]
     for i in range(n_timesteps):
@@ -451,6 +457,8 @@ def iem_sd_dog(n_ori_chans, n_bins=15, n_exp_tests=2, n_bootstraps=1000, bootstr
     bins = np.zeros((n_timesteps, n_bins, len(meg_subj_lst), n_exp_tests))
     perm_bins = np.zeros((n_timesteps, n_bins, len(meg_subj_lst), n_exp_tests))
 
+    channel_width = 180 / n_ori_chans
+
     for count, subj in enumerate(meg_subj_lst):
         print(subj)
         diffs_list = []
@@ -470,12 +478,12 @@ def iem_sd_dog(n_ori_chans, n_bins=15, n_exp_tests=2, n_bootstraps=1000, bootstr
             for j in range(n_timesteps):
 
                 for k in range(n_bins):
-                    bin_response = np.mean(np.argmax(coeffs[diff_bins == k, :, j], axis=1) * 20) - 80
+                    bin_response = np.mean(np.argmax(coeffs[diff_bins == k, :, j], axis=1) * channel_width) - (90 - channel_width/ 2)
                     bins[j, k, count, i] = bin_response
                     
                     
                     
-                    bin_response = np.mean(np.argmax(coeffs[diff_bins_copy == k, :, j], axis=1) * 20) - 80
+                    bin_response = np.mean(np.argmax(coeffs[diff_bins_copy == k, :, j], axis=1) * channel_width) - (90 - channel_width/ 2)
                     perm_bins[j, k, count, i] = bin_response
 
     bin_half_width = (180 / n_bins) / 2
@@ -646,7 +654,7 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         
         
         
-        plt.savefig("../Figures/IEM/python_files/sd_all_t%d.png" %  ((j + 16) * 25))
+        plt.savefig("../Figures/IEM/python_files/sd_all_t%d.png" %  (j * 25))
         plt.clf()
     return
 
@@ -666,30 +674,44 @@ def correlate_prev_curr():
     plt.savefig("../Figures/final_results/corr/corr.png")
     plt.clf()
 
-def calc_previous_selectivity(n_ori_chans, n_exp_tests=25, bootstrap_size=1000, n_bootstraps=100, n_permutations=1000):
+def calc_previous_selectivity(n_ori_chans, n_timesteps=16, n_bins=15, n_exp_tests=25, bootstrap_size=1000, n_bootstraps=100, n_permutations=1000):
     IEM = InvertedEncoder(n_ori_chans)
-    close_diffs = []
-    far_diffs = []
+    selectivity_accs = np.zeros((n_bins, n_timesteps))
+    selectivity_bins = [[] for _ in range(n_bins)]
     targ_ori = None
+    
+    bin_width = (180 / n_bins)
+    half_bin_width = bin_width / 2
 
     for i in range(n_exp_tests):
+        print(i)
         for subj in meg_subj_lst:
             
             coeffs, diffs, targ_ori = IEM.run_sd_dog(subj, ret_targ=True, time_shift=-1)
 
-            close_diffs.extend(coeffs[np.abs(diffs) <= 10])
-            far_diffs.extend(coeffs[np.abs(diffs) > 10])
+            for j in range(n_bins):
+                bin_center = j * bin_width - 90 + half_bin_width
+                selectivity_bins[j].extend(coeffs[np.abs(diffs - bin_center) < half_bin_width])
 
-    close_diffs = np.array(close_diffs)
-    far_diffs = np.array(far_diffs)
+    for i in range(n_bins):
+        selectivity_bins[i] = np.array(selectivity_bins[i])
+        selectivity_accs[i] = n_correct_tsteps(selectivity_bins[i], targ_ori, selectivity_bins[i].shape[0]) / selectivity_bins[i].shape[0]
 
-    close_accuracy = n_correct_tsteps(close_diffs, targ_ori, close_diffs.shape[0]) / close_diffs.shape[0]
-    far_accuracy = n_correct_tsteps(far_diffs, targ_ori, far_diffs.shape[0]) / far_diffs.shape[0]
 
-    plt.plot(close_accuracy, label="close")
-    plt.plot(far_accuracy, label="Far")
-    plt.legend()
-    plt.savefig("../Figures/final_results/IEM/prev_selectivity")
+
+    plt.imshow(selectivity_accs, vmin=0.10, vmax=0.12)
+    plt.colorbar()
+    plt.savefig("../Figures/final_results/IEM/prev_selectivity_flat.png")
+    plt.clf()
+
+    for i in range(n_bins):
+        plt.plot(np.linspace(0, 375, n_timesteps), selectivity_accs[i], label="Bin: %i" % (i * (180 / n_bins) - 90 + (90 / n_bins)))
+    plt.xlabel("Time (ms)")
+    plt.ylabel("Decoding Accuracy")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.tight_layout()
+
+    plt.savefig("../Figures/final_results/IEM/prev_selectivity_line.png")
     plt.clf()
             
 
@@ -698,9 +720,10 @@ def calc_previous_selectivity(n_ori_chans, n_exp_tests=25, bootstrap_size=1000, 
 
 def main():
     #correlate_prev_curr()
-    #iem_sd_dog(9, n_bins=45, n_exp_tests=100, n_bootstraps=100, n_permutations=1000, bootstrap_size=1000)
+    #iem_sd_dog(180, n_bins=45, n_exp_tests=100, n_bootstraps=100, n_permutations=1000, bootstrap_size=1000)
     #iem_sd_all(9)
-    calc_previous_selectivity(9, n_exp_tests=100)
+    #calc_previous_selectivity(9, n_exp_tests=500)
+    run_all_subjects(9, time_shift=-1)
 
 if __name__ == "__main__":
     main()
