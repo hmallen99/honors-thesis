@@ -166,14 +166,15 @@ def run_ptestv2(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
     print(a_list)
     print(a_perm_list)
     plt.figure(figsize=(9, 6))
-    plt.scatter(rel_or, error, alpha=0.25)
+    picked_scatter = np.random.choice(len(rel_or), 1000, replace=False)
+    plt.scatter(rel_or[picked_scatter], error[picked_scatter], alpha=0.15)
     #sns.lineplot(fit_list[0], fit_list[1], color="r", label="Experimental")
     plt.plot(rel_or, result.best_fit[sorted_indices], color="red", linewidth=4, label="Experimental")
     sns.lineplot(perm_fit_list[0], perm_fit_list[1], color="g", label="Permutation", linewidth=4)
     plt.xlabel("Relative Orientation of Previous Trial")
     plt.ylabel("Error on Current Trial")
     plt.title("a={:.3f}      P={:.3f}".format(a_list.mean(), p_value))
-    plt.savefig("../Figures/final_results/DoG/DoG_plot_v2.png")
+    plt.savefig("../Figures/final_results/DoG/DoG_plot_v2.png", dpi=800)
 
 
 def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):

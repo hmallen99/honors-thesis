@@ -13,6 +13,8 @@ from file_lists import new_beh_lst, meg_subj_lst, ch_picks, n_subj_trials
 import load_data as ld
 from DoG import init_gmodel
 
+from sklearn.model_selection import KFold
+
 
 saved_data = {}
 
@@ -147,7 +149,7 @@ def first_guess(W, actual_meg, log_omega_det, omega_inv):
     first_g[np.isnan(first_g)] = 0.0
 
     if np.sum(first_g) == 0.0:
-        first_g[np.random.choice(len(first_g))] == 1.0
+        first_g = np.random.rand(first_g.shape[0])
 
     return first_g
 
@@ -211,9 +213,14 @@ class BayesianIEM(object):
 
         n_reps = int(np.max(trn_repnum))
 
-        for ii in range(n_reps):
-            trnidx = trn_repnum != ii
-            tstidx = trn_repnum == ii
+        kfold = KFold(n_splits=5, shuffle=True)
+        for train, test in kfold.split(trn_cv_coeffs):
+            trnidx = train
+            tstidx = test
+
+        #for ii in range(n_reps):
+            #trnidx = trn_repnum != ii
+            #tstidx = trn_repnum == ii
 
             thistrn = trn_cv_coeffs[trnidx, :, :]
             thistst = trn_cv_coeffs[tstidx, :, :]
@@ -232,12 +239,12 @@ class BayesianIEM(object):
                 omega_inv, log_omega_det = fit_omega(cov_residual, W @ W.T) # might need to transpose both w_coeffs
 
                 tst_results = []
-                starting_vals = np.linalg.lstsq(w_coeffs.T, thistst_tpt.T)[0].T
+                #starting_vals = np.linalg.lstsq(w_coeffs.T, thistst_tpt.T)[0].T
 
                 for j in range(thistst_tpt.shape[0]):
 
-                    #starting_value = first_guess(W, thistst_tpt[j], log_omega_det, omega_inv)
-                    starting_value = starting_vals[j]
+                    starting_value = first_guess(W, thistst_tpt[j], log_omega_det, omega_inv)
+                    #starting_value = starting_vals[j]
 
                     result = maximize_params(starting_value, W, thistst_tpt[j], log_omega_det, omega_inv)
                     #print(result)
@@ -600,7 +607,7 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
     return
 
 def main():
-    run_all_subjects(9, n_exp_tests=10, n_p_tests=100)
+    run_all_subjects(9, n_exp_tests=2, n_p_tests=4)
     #run_all_subjects(9, time_shift=-1)
     #load_behavior("KA")
     #load_percept_data("KA")

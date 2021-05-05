@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.io import loadmat
 from scipy.stats import vonmises
+from scipy.optimize import curve_fit
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -100,16 +101,16 @@ class InvertedEncoder(object):
 
         chan_resp_cv_coeffs = np.zeros((trn_cv_coeffs.shape[0], len(self.chan_center), trn_cv_coeffs.shape[2]))
 
-        #n_reps = int(np.max(trn_repnum))
+        n_reps = int(np.max(trn_repnum))
 
-        #for ii in range(n_reps):
-        #    trnidx = trn_repnum != ii
-        #    tstidx = trn_repnum == ii
+        for ii in range(n_reps):
+            trnidx = trn_repnum != ii
+            tstidx = trn_repnum == ii
 
-        kfold = KFold(n_splits=5, shuffle=True)
-        for train, test in kfold.split(trn_cv_coeffs):
-            trnidx = train
-            tstidx = test
+        #kfold = KFold(n_splits=5, shuffle=True)
+        #for train, test in kfold.split(trn_cv_coeffs):
+            #trnidx = train
+            #tstidx = test
 
             thistrn = trn_cv_coeffs[trnidx, :, :]
             thistst = trn_cv_coeffs[tstidx, :, :]
@@ -242,7 +243,7 @@ def make_pd_bar(exp_accs, perm_accs):
     df = pd.DataFrame(data=d)
     return df
 
-def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16, percept_data=False, time_shift=0):
+def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=10, n_timesteps=16, percept_data=False, time_shift=0):
     IEM = InvertedEncoder(n_ori_chans)
     avg_response = np.zeros(n_ori_chans)
     total_trials = 0
@@ -267,7 +268,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         for subj in meg_subj_lst:
             coeffs, trng_cv, targ_ori = IEM.run_subject(subj, shuffle_data=True, 
                                                         percept_data=percept_data, time_shift=time_shift)    
-            tmean = coeffs.mean(axis=2)
+            tmean = coeffs[:, :, 4:13].mean(axis=2)
             exp_timestep_ch_response += coeffs.mean(axis=0) * len(trng_cv)
             exp_accuracies[i] += n_correct(tmean, targ_ori, len(trng_cv))
             exp_accuracies_4_8[i] += n_correct(coeffs[:, :, 4:9].mean(axis=2), targ_ori, len(trng_cv))
@@ -280,7 +281,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         exp_accuracies_4_8[i] /= test_trials
 
         trial_accuracy = trial_accuracy / test_trials
-        exp_t_accs_x.extend(np.linspace(0.0, 0.4, n_timesteps))
+        exp_t_accs_x.extend(np.linspace(0.0, 0.375, n_timesteps))
         exp_t_accs_y.extend(trial_accuracy)
 
         avg_response += trial_response
@@ -327,7 +328,7 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
         for subj in meg_subj_lst:
             coeffs, trng_cv, targ_ori = IEM.run_subject(subj, shuffle_data=True, permutation_test=True, 
                                                         percept_data=percept_data, time_shift=time_shift)
-            tmean = coeffs.mean(axis=2)
+            tmean = coeffs[:, :, 4:13].mean(axis=2)
             temp_perm_accuracy += n_correct(tmean, targ_ori, len(trng_cv))
             perm_trial_acc += n_correct_tsteps(coeffs, targ_ori, len(trng_cv))
             total_response += np.sum(tmean, 0)
@@ -369,13 +370,6 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     plt.savefig("../Figures/IEM/python_files/accuracy.png")
     plt.clf()
 
-    acc_df_4_8 = make_pd_bar(exp_accuracies_4_8, perm_accuracies)
-    plt.figure(figsize=(8, 8))
-    sns.barplot(x='Trial', y='accuracy', data=acc_df_4_8, ci="sd")
-    plt.title("Accuracy from 100-200 ms, p-value: {:.3f}".format(extreme_accs_4_8.mean() / n_p_tests))
-    plt.savefig("../Figures/IEM/python_files/accuracy_4_8.png")
-    plt.clf()
-
     plt.figure(figsize=(8,8))
     plt.hist(perm_accuracies, bins=np.linspace(0.09, 0.14, 20), label="permutation")
     plt.axvline(exp_accuracies.mean(), label="Mean Accuracy", linewidth=2.5, color='r')
@@ -386,19 +380,17 @@ def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=20, n_timesteps=16,
     plt.savefig("../Figures/IEM/python_files/null_comparison.png")
     plt.clf()
 
-    plt.figure(figsize=(4, 8))
-    sns.lineplot(exp_list_x, exp_list_y, label="Experimental Response", ci="sd")
+    plt.figure(figsize=(6, 6))
+    sns.lineplot(exp_list_x, exp_list_y, label="Experimental", ci="sd")
     sns.lineplot(perm_list_x, perm_list_y, label="Permutation", ci="sd")
     
-    plt.ylim(0.1, 0.35)
-    for i in range(n_ori_chans):
-        plt.text(i-0.5, avg_response[i]+0.03, ch_resp_p_values[i], color="red")
+    plt.ylim(0.2, 0.35)
     plt.legend()
     plt.xticks(ticks=np.arange(n_ori_chans), labels=np.arange(0, 180, 180 / n_ori_chans).astype(int))
-    plt.title("Mean Channel Response of Experiment vs. Permutation groups")
+    plt.title("Mean Channel Response\n100-300ms")
     plt.xlabel("Orientation Channel (Degrees)")
     plt.ylabel("Channel Response")
-    plt.savefig("../Figures/IEM/python_files/perm_response.png")
+    plt.savefig("../Figures/IEM/python_files/perm_response_current.png")
     plt.clf()
 
 
@@ -560,8 +552,8 @@ def iem_sd_dog(n_ori_chans, n_bins=15, n_exp_tests=2, n_bootstraps=1000, bootstr
         print(i)
     
         plt.figure(figsize=(9, 6))
-        sns.lineplot(fit_list[i][1], fit_list[i][0], label="Experimental", linewidth=4, color="red")
         sns.lineplot(perm_fit_list[i][1], perm_fit_list[i][0], label="Permutation", linewidth=4, color="green")
+        sns.lineplot(fit_list[i][1], fit_list[i][0], label="Experimental", linewidth=4, color="red")
         plt.ylim((-20, 20))
         plt.title("a: {:.3f}      p: {:.3f}".format(a_list[i].mean(), p_values[i]))
         plt.xlabel("Relative Previous Orientation (degrees)")
@@ -658,6 +650,81 @@ def iem_sd_all(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_
         plt.clf()
     return
 
+def gaussian_func(x, a, x0, sigma):
+    return a * np.exp(-(x-x0)**2/(2*sigma**2))
+
+def get_dist_mean(bins, n_bins=15):
+    mu_list = []
+    for i in range(n_bins):
+        x = np.arange(10, 171, 20)
+        y = np.maximum(bins[i], 0.0)
+        mu = 90
+        if np.sum(y) != 0:
+            mu = np.maximum(np.minimum(np.sum(x*y)/ np.sum(y), 100), 80)
+        sigma = np.sum(y*(x-mu)**2)/9
+        try:
+            popt, _ = curve_fit(gaussian_func, x, y, p0=[1, 90, sigma])
+            mu = popt[1]
+            mu = np.minimum(np.maximum(mu, 80), 100)
+            mu_list.append(mu)
+        except:
+            mu_list.append(mu)
+    return np.array(mu_list)
+
+def iem_sd_allv2(n_ori_chans, n_bins=15, percept_data=False, n_p_tests=100, n_exp_tests=25, n_timesteps=16):
+    IEM = InvertedEncoder(n_ori_chans)
+    #meg_subj_lst = ["KA", "AK"]
+   
+    bin_accuracies = np.zeros((n_exp_tests, n_bins, n_timesteps))
+    for i in range(n_exp_tests):
+        print("Experimental Test: %i" % i)
+        bin_sizes = np.zeros(n_bins)
+        bins = np.zeros((n_bins, n_ori_chans, n_timesteps))
+        for subj in meg_subj_lst:
+            temp_bins, temp_bin_sizes = IEM.run_sd_subject(subj, n_bins=n_bins)
+            bins += temp_bins
+            bin_sizes += temp_bin_sizes
+        
+        for j in range(n_timesteps):
+            normalized_bins = bins[:, :, j] / bin_sizes[:, None]
+            bin_accuracies[i, :, j] = get_dist_mean(normalized_bins, n_bins=n_bins) - 90
+
+    perm_bin_accuracies = np.zeros((n_p_tests, n_bins, n_timesteps))
+    for i in range(n_p_tests):
+        print("Permutation Test: %i" %i)
+        bin_sizes = np.zeros(n_bins)
+        bins = np.zeros((n_bins, n_ori_chans, n_timesteps))
+        for subj in meg_subj_lst:
+            temp_bins, temp_bin_sizes = IEM.run_sd_subject(subj, n_bins=n_bins, permutation_test=True)
+            bins += temp_bins
+            bin_sizes += temp_bin_sizes
+        
+        for j in range(n_timesteps):
+            normalized_bins = bins[:, :, j] / bin_sizes[:, None]
+            perm_bin_accuracies[i, :, j] = get_dist_mean(normalized_bins, n_bins=n_bins) - 90
+
+
+    ptest_comp = np.zeros((n_bins, n_timesteps))
+    for i in range(n_p_tests):
+        for j in range(n_exp_tests):
+            gr_eq_vals = np.abs(perm_bin_accuracies[i, :, :]) >= np.abs(bin_accuracies[j, :, :])
+            ptest_comp[gr_eq_vals] += 1.0
+    ptest_comp /= (n_p_tests * n_exp_tests)
+        
+    for j in range(n_timesteps):
+        plt.figure(figsize=(8,8))
+        xs = np.linspace(-90 + (90 / n_bins), 90 - (90 / n_bins), n_bins)
+        plt.bar(xs, bin_accuracies[:, :, j].mean(0), width = 180 / n_bins)
+        plt.ylim((-20, 20))
+        plt.xlabel("Relative Previous Orientation")
+        plt.ylabel("Channel Response Bias")
+        for i in range(n_bins):
+            if ptest_comp[i, j] < 0.05:
+                plt.text(xs[i], 9, "*")
+        plt.savefig("../Figures/final_results/bias/fit_bias_t%i_2.png" % j)
+        plt.clf()
+    return
+
 def correlate_prev_curr():
     current = run_all_subjects(9, n_exp_tests=2, n_p_tests=1)
     current = current.mean(0)
@@ -723,7 +790,9 @@ def main():
     #iem_sd_dog(180, n_bins=45, n_exp_tests=100, n_bootstraps=100, n_permutations=1000, bootstrap_size=1000)
     #iem_sd_all(9)
     #calc_previous_selectivity(9, n_exp_tests=500)
-    run_all_subjects(9, time_shift=-1)
+    #run_all_subjects(9, time_shift=-1)
+    #run_all_subjects(9)
+    iem_sd_allv2(9, n_exp_tests=100, n_p_tests=100)
 
 if __name__ == "__main__":
     main()
