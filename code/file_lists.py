@@ -1,3 +1,6 @@
+# NOTE: This is not a very good way to store information. If you have time, put these in pickled .npy files or .mat files, and make functions to grab them
+
+# Aligns Subjects with the behavior .mat files
 new_beh_lst = {
     "KA": 1,
     "MF": 7,
@@ -22,6 +25,8 @@ new_beh_lst = {
     "TOu": 15,
 }
 
+# This list exists because of NNo-4. This list mostly just appends "-aligned" to subject names, which could otherwise be done easily in python
+# If you want to remove this list, redo the source localization Co-reg and BEM for NNo and rename it to NNo-aligned.
 aligned_dir = {
     "KA": "KA-aligned",
     "MF": "MF-aligned",
@@ -46,6 +51,7 @@ aligned_dir = {
     "HY": "HY-aligned",
 }
 
+# List of subjects. DI, RS, HY excluded for behavioral performance
 meg_subj_lst = [
     "KA",
     "MF",
@@ -70,6 +76,7 @@ meg_subj_lst = [
     #HY,
 ]
 
+# Deprecated
 behavior_lst = {
     "KA": "01amano1101/amano1101_session_20161101T132416",
     "MF": "07fujita0131/fujita0131_session_20170131T145759",
@@ -81,6 +88,7 @@ behavior_lst = {
     "AK": "05koizumi0131/koizumi0131_session_20170131T110526",
 }
 
+# Links meg data to subject names
 meg_locations = {
     "KA": "../../../../MEG_raw01/161101_amano_SD",
     "MF": "../../../../MEG_raw01/170131_fujita_SD",
@@ -105,6 +113,7 @@ meg_locations = {
     "HY": "../../../../MEG_raw01/170804_yasui_SD",
 }
 
+# Channels corresponding to 50 left occipital and temporal electrodes
 ch_picks = [
  'MEG1512',
  'MEG1513',
@@ -158,6 +167,7 @@ ch_picks = [
  'MEG2143',
 ]
 
+# Number of usable trials for each subject
 n_subj_trials = {
     "KA": 800,
     "MF": 600,

@@ -300,11 +300,6 @@ def run_subj(subj):
     plt.clf()
 
 def main():
-    #for subj in meg_subj_lst:
-        #run_subj(subj)
-
-    #run_all_subj()
-    #run_ptest()
     run_ptestv2(n_bootstraps=5000, n_permutations=20000)
 
 if __name__ == "__main__":
