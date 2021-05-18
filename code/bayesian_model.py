@@ -1,5 +1,7 @@
 # van Bergen code adapted from https://github.com/tknapen/decode_encode/
 # IEM code adapted from https://github.com/tommysprague/IEM-tutorial
+# Author: Henry Allen
+# Note: May not be working correctly yet
 
 
 import numpy as np
