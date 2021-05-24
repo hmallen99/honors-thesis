@@ -85,28 +85,6 @@ def plot_behavior(behavior_subj, n_trials):
     plt.savefig("../Figures/Behavior/%s_behavior.png" % behavior_subj)
     plt.clf()
 
-class CosineRNNModel(object):
-    def __init__(self, n_epochs=5):
-        self.n_epochs = n_epochs
-        self.model = keras.Sequential()
-        self.model.add(layers.SimpleRNN(64, activation="relu"))
-        self.model.add(layers.Dense(32, activation="relu"))
-        self.model.add(layers.Dense(units=1))
-        self.model.compile(loss=gabor_loss, optimizer="adam", metrics="cosine_similarity")
-
-
-    def fit(self, X, y):
-        X, y = np.asarray(X), np.asarray(y)
-        self.model.fit(X, y, epochs=self.n_epochs, batch_size=10)
-        return self
-    
-    def predict(self, X):
-        return self.model.predict(X)
-
-    def evaluate(self, X, y):
-        _, accuracy = self.model.evaluate(X, y)
-        return accuracy
-
 class LogisticRNNModel(object):
     def __init__(self, n_epochs=5, n_classes=4, n_timesteps=16):
         self.n_epochs = n_epochs
@@ -275,54 +253,6 @@ class CNNSlidingModel(DenseSlidingModel):
 
         avg_acc = np.mean(accuracies)
         return [avg_acc for i in range(16)]
-            
-class GaborSlidingModel(DenseSlidingModel):
-    def __init__(self):
-        DenseSlidingModel.__init__(self, n_epochs=30)
-
-    def set_models(self):
-        self.models = []
-        for _ in range(self.n_timesteps):
-            model = keras.Sequential()
-            model.add(layers.Dense(128, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-1, l2=1e-1)))
-            model.add(layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-1, l2=1e-1)))
-            model.add(layers.Dense(32, activation="relu", kernel_regularizer=regularizers.l1_l2(l1=1e-1, l2=1e-1)))
-            model.add(layers.Dense(1))
-            model.compile(loss=gabor_loss2, optimizer="adam", metrics=gabor_metric)
-            self.models.append(model)
-        print("set model")
-
-    def cross_validate(self, X, y):
-        kfold = KFold(n_splits=5, shuffle=True)
-        y = y.flatten()
-
-        accuracies = []
-        scale = StandardScaler()
-
-        for i in range(self.n_timesteps):
-            X[:, :, i] = scale.fit_transform(X[:, :, i])
-
-
-
-        for train, test in kfold.split(X, y):
-            X_train, X_test = X[train], X[test]
-            y_train, y_test = y[train], y[test]
-
-            split_accuracies = []
-            for i in range(self.n_timesteps):
-                print("timestep: %d" % i)
-                self.models[i].fit(X_train[:, :, i], y_train, batch_size=5, epochs=self.n_epochs)
-                print(X_train[:, :, i].shape)
-                _, accuracy = self.models[i].evaluate(X_test[:, :, i], y_test)
-                preds = self.models[i].predict(X_test[:, :, i])
-                print(y_test)
-                print(preds)
-                split_accuracies.append(accuracy)
-            
-            self.set_models()
-            accuracies.append(split_accuracies)
-        accuracies = np.array(accuracies) / 90
-        return accuracies.mean(0)
 
 class LogisticSlidingModel(object):
     def __init__(self, max_iter=100, n_classes=2, k=200, C=1, l1_ratio=0.9):
@@ -411,33 +341,4 @@ class SVMSlidingModel(object):
         self.model.fit(X, y)
         patterns = get_coef(self.model, "patterns_", inverse_transform=True)
         return mne.EvokedArray(patterns[:, -1, :], epochs_info, tmin=0)
-
-class RandomForestSlidingModel(object):
-    def __init__(self, k=200, C=1):
-        self.clf = Pipeline([('scaler', StandardScaler()), 
-                        ('f_classif', SelectKBest(f_classif, k)),
-                        ('linear', LinearModel(RandomForestClassifier()))])
-        self.model  = SlidingEstimator(self.clf, scoring="accuracy")
-
-    def fit(self, X, y):
-        X, y = np.asarray(X), np.asarray(y)
-        self.model.fit(X, y)
-        return self
-
-    def predict(self, X):
-        return self.model.predict(X)
-
-    def evaluate(self, X, y, n_timesteps=16):
-        results = self.model.predict(X)
-        accuracy_lst = [calc_accuracy(results[:, i], y) for i in range(n_timesteps)]
-        return accuracy_lst
-
-    def cross_validate(self, X, y):
-        scores = mne.decoding.cross_val_multiscore(self.model, X, y, cv=5, n_jobs=-1)
-        return scores.mean(0)
-
-    def get_features(self, subj, i):
-        features = self.model.estimators_[i].named_steps['f_classif'].get_support()
-        np.save("%s_k_best" % subj, features)
-        return features
         
