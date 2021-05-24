@@ -3,16 +3,69 @@
 Author: Henry Allen
 
 ## Directories:
-1. Code - Contains all of the jupyter notebooks and python scripts for the code. Primary analysis will be done in main_analysis.py, with preprocessing work done in 
-MEG_analysis.py and source localization done in source_localization.py
-
-2. Data - Store computed fif files for source localization, evoked responses, etc.
-
-3. Figures - Plots and results
 
 
-## Pre-processsing Steps
+### Code
+IMPORTANT!: If you get errors, they most likely result from a missing or incorrect file path. This is especially likely when trying to generate figures or trying to save data in the Data/ folder.
 
+Contains all the code for the project. 
+
+#### Main Folder
+1. `bayesian_model`: This code is not complete, but is meant to implement the vanBergen modification of the IEM
+2. `DoG`: Contains permutation tests for derivative of Gaussians
+3. `file_lists`: Contains various python lists and dictionaries for making automation easier. This is a bad way to do things, and these lists should probably be stored in .mat or .npy files in the future
+4. `inverted_encoding_model`: Completed Inverted encoding model, adapted from Sprague code
+5. `load_data`: various functions to help load MEG data
+6. `machine_learning`: various machine learning classes and helper functions
+7. `MEG_analysis`: meg preprocessing code
+8. `permutation_test`: main code for running permutation tests with MNE decoding algorithms
+9. `source_localization`: source localization helper functions
+
+#### Jupyter Notebooks
+
+- These notebooks are just my initial explorations for MEG analysis and decoding analysis.
+
+- The Adjustment_Analysis6.ipynb code does not belong to me (Henry)
+
+- Move these notebooks to `code/` if you want them to work properly
+
+#### Old Analysis Files
+
+The work in here is either confusing to read, or may not work. Enter at your own risk
+
+1. `circular_regression`: attempts to do circular regression, but wasn't successful
+2. `main_analysis`: Initial analysis to run machine learning models
+3. `test_decoding_sample_rate`: test decoding with higher sample rate
+4. `serial_dependence`: various functions for analyzing serial dependence, many of which were unsuccessful
+
+#### Scripts
+
+This file includes some scripts to make it easier to do analysis. You may need to move them to the main /code/ directory
+for them to work
+
+1. `perform_bem`: Runs the make_bem_watershed code for all subjects in "subjs"
+2. `plot_meg_figs`: Makes figures with averaged evoked responses and source localization figures
+3. `plot_model_weights`: plots the MVPA patterns for MNE decoding models
+4. `save_mat`: saves loaded data to a mat file so that it can be easily reused
+5. `validate_epochs`: Checks the alignment of stim tracks with meg epochs
+
+
+### Figures
+
+IMPORTANT!: Before running the main analysis code, you will have to set the path for where to save figures, as the current paths may not exist. 
+
+1. `initial_results`/: Figures generated from exploratory analysis and preprocessing. Results here are not necessarily indicative of final model performance
+
+2. `intermediate_results`/: Figures from intermediate data processing and analysis after preprocessing. There is a lot of clutter here, and these files are just kept for archiving progress
+
+3. `final_results`/: Results computed with permutation tests, used in final draft of thesis and VSS poster.
+
+
+### Data
+Contains saved pre-processed data so that we don't have to run preprocessing every time we want to run the decoding analysis
+
+
+## Pre-processsing Overview
 For pre-processing, there are two main parts: (1) Filtering and processing the MEG data and (2) using MRI data for source localization. These steps can be seen as a diagram here:
 https://mne.tools/stable/overview/cookbook.html
 

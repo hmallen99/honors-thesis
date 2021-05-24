@@ -13,6 +13,13 @@ from DoG import init_gmodel
 saved_data = {}
 
 def load_data(subj, n_classes=9, time_shift=0):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
     if subj in saved_data:
         mat_dict = saved_data[subj]
         return mat_dict["trn"], mat_dict["trng"], mat_dict["ts"]
@@ -41,6 +48,13 @@ def calc_relative_orientation(x):
 
 
 def load_percept_data(subj, n_classes=9, time_shift=0):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
     _, trng = load_behavior(subj)
     trng = trng.squeeze()
     trn, _, ts = load_data(subj, n_classes=n_classes, time_shift=time_shift)
@@ -59,13 +73,31 @@ def load_percept_data(subj, n_classes=9, time_shift=0):
     return trn, trng, ts
 
 class InvertedEncoder(object):
+    """
+    Parameters
+    ----------
+    """
     def __init__(self, n_ori_chans):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         self.n_ori_chans = n_ori_chans
         self.chan_center = np.linspace(180 / n_ori_chans, 180, n_ori_chans)
         self.xx = np.linspace(1, 180, 180)
 
 
     def make_basis_set(self):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         make_basis_function = lambda xx, mu: np.power(np.cos(np.deg2rad(xx - mu)), self.n_ori_chans - (self.n_ori_chans % 2))
         basis_set = np.zeros((180, self.n_ori_chans))
         for cc in range(self.n_ori_chans):
@@ -73,12 +105,26 @@ class InvertedEncoder(object):
         return basis_set
 
     def make_stimulus_mask(self, trng):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         stim_mask = np.zeros((len(trng), len(self.xx)))
         for tt in range(stim_mask.shape[0]):
             stim_mask[tt, trng[tt]-1] = 1
         return stim_mask
 
     def make_trn_repnum(self, trng):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         trn_ou = np.unique(trng)
         trn_repnum = np.zeros(len(trng))
         trn_repnum[:] = np.nan
@@ -94,6 +140,13 @@ class InvertedEncoder(object):
     
 
     def cross_validate(self, trnX_cv, trn_cv, trng_cv, trn_repnum):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         trn_cv_coeffs = np.zeros((len(trng_cv), 2 * trn_cv.shape[1], trn_cv.shape[2]))
         trn_cv_coeffs[:, :trn_cv.shape[1], :] = np.real(trn_cv)
         trn_cv_coeffs[:, trn_cv.shape[1]:, :] = np.imag(trn_cv)
@@ -126,6 +179,13 @@ class InvertedEncoder(object):
         return chan_resp_cv_coeffs
 
     def run_subject(self, subj, permutation_test=False, shuffle_data=False, plot=False, percept_data=False, shuffle_idx=[], time_shift=0):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         trn, trng, ts = load_percept_data(subj, self.n_ori_chans, time_shift) if percept_data else load_data(subj, self.n_ori_chans, time_shift)
         basis_set = self.make_basis_set()
 
@@ -171,6 +231,13 @@ class InvertedEncoder(object):
         return coeffs_shift, trng_cv, targ_ori
 
     def get_diffs(self, subj):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         tgt, _ = load_behavior(subj)
         tgt = tgt[:n_subj_trials[subj]]
         diffs = [0]
@@ -180,6 +247,13 @@ class InvertedEncoder(object):
         return diffs
 
     def run_sd_subject(self, subj, n_bins=30, permutation_test=False):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         _, trng, _ = load_data(subj)
         trn_repnum = self.make_trn_repnum(trng)
         diffs = self.get_diffs(subj)
@@ -198,6 +272,13 @@ class InvertedEncoder(object):
         return bins, bin_sizes
 
     def run_sd_dog(self, subj, permutation_test=False, ret_targ=False, time_shift=0):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         _, trng, _ = load_data(subj, time_shift=time_shift)
         trn_repnum = self.make_trn_repnum(trng)
         diffs = self.get_diffs(subj)
@@ -215,6 +296,13 @@ class InvertedEncoder(object):
 
 
 def n_correct(tmean, targ_ori, n_trials):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
     n = 0
     for i in range(n_trials):
         if np.argmax(tmean[i]) == targ_ori:
@@ -222,6 +310,13 @@ def n_correct(tmean, targ_ori, n_trials):
     return n
     
 def n_correct_tsteps(coeffs, targ_ori, n_trials):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
     n_timesteps = coeffs.shape[2]
     n = np.zeros(n_timesteps)
     for i in range(n_trials):
@@ -231,6 +326,13 @@ def n_correct_tsteps(coeffs, targ_ori, n_trials):
     return n
 
 def make_pd_bar(exp_accs, perm_accs):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
     data_lst = []
     data_lst.extend(exp_accs)
     data_lst.extend(perm_accs)
@@ -244,6 +346,13 @@ def make_pd_bar(exp_accs, perm_accs):
     return df
 
 def run_all_subjects(n_ori_chans, n_p_tests=100, n_exp_tests=10, n_timesteps=16, percept_data=False, time_shift=0):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
     IEM = InvertedEncoder(n_ori_chans)
     avg_response = np.zeros(n_ori_chans)
     total_trials = 0

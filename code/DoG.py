@@ -12,17 +12,41 @@ from scipy.io import loadmat
 import scipy.special as sps
 import seaborn as sns
 
-#from load_data import load_behavior
 from file_lists import new_beh_lst, meg_subj_lst
-#from serial_dependence import calc_relative_orientation
 
 def calc_relative_orientation(x):
+    """
+    Ensures that orientations are between -90, 90 degrees. Note: this
+    function is deperecated, should switch over to using the one line
+    numpy version of this code.
+
+    Parameters
+    ----------
+    x: an orientation
+
+    Returns
+    -------
+    x_prime: orientation in the range of -90, 90
+    """
     if np.abs(x) > 90:
         x = x - (np.sign(x) * 180)
         return x
     return x
 
 def load_behavior(subj):
+    """
+    loads the behavioral data for a subject.
+
+    Parameters
+    ----------
+    subj: subject whose data will be loaded
+
+    Returns
+    -------
+    pred: array of response orientations
+
+    actual: array of target orientations
+    """
     y_path = "../IEM-tutorial/Behavior/Sub%d_beh.mat" % new_beh_lst[subj]
     data = loadmat(y_path)
     pred = data["ResOrs"]
@@ -30,6 +54,15 @@ def load_behavior(subj):
     return pred.squeeze(), actual.squeeze()
 
 def calc_rel_or_all(X):
+    """
+    Parameters
+    ----------
+    X: array of length n containing orientations
+
+    Returns
+    -------
+    X_prime: correctly oriented orientations
+    """
     return np.array([calc_relative_orientation(i) for i in X])
 
 def get_sd_data(subj, error_cutoff=25, or_cutoff=60, n=500):
@@ -48,8 +81,6 @@ def get_sd_data(subj, error_cutoff=25, or_cutoff=60, n=500):
     rel_or = np.array([0] + [actual[i-1] - actual[i] for i in range(1, length)])
     rel_or = calc_rel_or_all(rel_or)
     
-    
-
     error = calc_rel_or_all(pred - actual)
 
     rel_or = rel_or[np.abs(error) < error_cutoff]
@@ -57,18 +88,6 @@ def get_sd_data(subj, error_cutoff=25, or_cutoff=60, n=500):
 
     error = error[np.abs(rel_or) < or_cutoff]
     rel_or = rel_or[np.abs(rel_or) < or_cutoff]
-
-    """res, tgt = load_behavior(subj)
-    res, tgt = res[0, :n], tgt[0, :n]
-    rel_or = [0]
-    first_err = calc_relative_orientation(res[0] - tgt[0])
-    error = [first_err]
-    for i in range(1, n):
-        next_or = calc_relative_orientation(tgt[i-1] - tgt[i])
-        next_er = calc_relative_orientation(res[i] - tgt[i])
-        if np.abs(next_or) < or_cutoff and np.abs(next_er) < error_cutoff:
-            rel_or += [next_or]
-            error += [next_er]"""
 
     return rel_or, error
 
@@ -81,13 +100,32 @@ def gaussian(x, a=6, b=0.03):
     return (a * b * c * x * exp(-((b * x) ** 2)))
 
 def init_gmodel(amax=40, amin=-40, bmax=60, bmin=-60):
+    """
+    initializes a derivative of gaussian model to be fit
+
+    Returns
+    -------
+    gmodel: call gmodel.fit() to fit the DoG
+    """
     gmodel = Model(gaussian)
     gmodel.set_param_hint('a', max=amax, min=amin)
     gmodel.set_param_hint('b', max=bmax, min=bmin)
     return gmodel
 
-
 def run_ptestv2(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
+    """
+    Runs a permutation test that fits a gaussian for each subject, then compares
+    the amplitudes of the bootstraps to a permutation distribution.
+
+    Parameters
+    ----------
+    n_bootstraps: number of bootstrap iterations to run
+
+    n_permutations: number of permutation iterations to compare bootstraps to
+
+    bootstrap_size: size of each bootstrap, i.e. number of samples generated
+
+    """
     subj_data = {}
     for subj in meg_subj_lst:
         next_or, next_error = get_sd_data(subj)
@@ -159,9 +197,6 @@ def run_ptestv2(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
     sorted_indices = np.argsort(rel_or)
     rel_or = rel_or[sorted_indices]
 
-
-
-
     print(p_value)
     print(a_list)
     print(a_perm_list)
@@ -176,8 +211,22 @@ def run_ptestv2(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
     plt.title("a={:.3f}      P={:.3f}".format(a_list.mean(), p_value))
     plt.savefig("../Figures/final_results/DoG/DoG_plot_v2.png", dpi=800)
 
-
 def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
+    """
+    Runs a naive permutation test that concatenates all behavioral trials
+    and fits a DoG curve to bootrstraps generated with replacement from
+    all behavioral trials. This results in a lower p value, generally, as
+    it is more susceptible to outliers.
+
+    Parameters
+    ----------
+    n_bootstraps: number of bootstrap iterations to run
+
+    n_permutations: number of permutation iterations to compare bootstraps to
+
+    bootstrap_size: size of each bootstrap, i.e. number of samples generated
+
+    """
     rel_or, error = [], []
     for subj in meg_subj_lst:
         next_or, next_error = get_sd_data(subj)
@@ -238,38 +287,15 @@ def run_ptest(n_bootstraps=5000, n_permutations=100000, bootstrap_size=1000):
     plt.title("a={:.3f}      P={:.3f}".format(a_list.mean(), p_num))
     plt.savefig("../Figures/final_results/DoG/DoG_plot.png")
 
-def run_all_subj():
-    rel_or, error = [], []
-    for subj in meg_subj_lst:
-        next_or, next_error = get_sd_data(subj)
-        rel_or.extend(next_or)
-        error.extend(next_error)
-
-    rel_or, error = np.array(rel_or), np.array(error)
-    mean_error = error - np.mean(error)
-
-    print(error.shape)
-    print(rel_or.shape)
-
-    gmodel = init_gmodel()
-    result = gmodel.fit(mean_error, x=rel_or, b=0.03)
-
-    
-
-    plt.figure(figsize=(12,8))
-    plt.scatter(rel_or, error)
-
-    sorted_indices = np.argsort(rel_or)
-    rel_or = rel_or[sorted_indices]
-    plt.plot(rel_or, result.best_fit[sorted_indices], color="red", linewidth=4)
-    plt.xlabel("Previous Orientation - Current Orientation")
-    plt.ylabel("Response Orientiaion - Presented Orientation")
-    plt.xlim((-60, 60))
-    plt.ylim((-40, 40))
-    plt.savefig("../Figures/SD/DoG/DoG.png")
-    plt.clf()
-
 def run_subj(subj):
+    """
+    Calculates the DoG fit for a single subject and plots it. 
+    Does not bootstrap.
+
+    Parameters
+    ----------
+    subj: name of the subject
+    """
     rel_or, error = [], []
     next_or, next_error = get_sd_data(subj)
     rel_or.extend(next_or)
@@ -283,8 +309,6 @@ def run_subj(subj):
 
     gmodel = init_gmodel()
     result = gmodel.fit(mean_error, x=rel_or, b=0.03)
-
-    
 
     plt.figure(figsize=(12,8))
     plt.scatter(rel_or, error)

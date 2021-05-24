@@ -15,8 +15,6 @@ from file_lists import new_beh_lst, meg_subj_lst, ch_picks, n_subj_trials
 import load_data as ld
 from DoG import init_gmodel
 
-from sklearn.model_selection import KFold
-
 
 saved_data = {}
 
@@ -96,6 +94,14 @@ def make_pd_bar(exp_accs, perm_accs):
     return df
 
 def calc_omega_error(x, cov, WWT):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+
     rho = x[0]
     sigma = x[1]
 
@@ -109,6 +115,14 @@ def calc_omega_error(x, cov, WWT):
     return np.sum(np.square(cov - omega))
 
 def fit_omega(cov, WWT):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+
     x0 = np.zeros((cov.shape[0] + 2))
     x0[0] = 0.2
     x0[1] = 7.5
@@ -132,6 +146,13 @@ def fit_omega(cov, WWT):
 
 
 def first_guess(W, actual_meg, log_omega_det, omega_inv):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
 
     const_log = -0.5 * (log_omega_det[1] + omega_inv.shape[0] * np.log(2*np.pi))
 
@@ -157,6 +178,28 @@ def first_guess(W, actual_meg, log_omega_det, omega_inv):
 
 
 def calc_log_likelihood(ch_resp, W, actual_meg, log_omega_det, omega_inv):
+    """
+    Calculates the log likelihood of a channel response given estimated
+    parameters. This function is used in optimization to estimate a
+    channel response given starting parameters.
+
+    Parameters
+    ----------
+    ch_resp: input channel response value
+
+    W: encoding pass estimated weights
+
+    actual_meg: test MEG data point
+
+    log_omega_det: log of the determinant of the Omega matrix
+
+    omega_inv: Inverse of the estimated omega matrix
+
+
+    Returns
+    -------
+    neg_log_likelihood: the negative log likelihood calculated from the input parameters
+    """
     pred_meg = np.dot(W, ch_resp)
     residual_meg = (actual_meg - pred_meg).T
     const_log = -0.5 * (log_omega_det[1] + omega_inv.shape[0] * np.log(2*np.pi))
@@ -164,6 +207,16 @@ def calc_log_likelihood(ch_resp, W, actual_meg, log_omega_det, omega_inv):
     return -log_likelihood
 
 def maximize_params(starting_value, W, actual_meg, log_omega_det, omega_inv):
+    """
+    This function calculates an optimized channel response given a starting value
+    and the computed parameters of the optimization function.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
     bounds = [(0, 1) for _ in starting_value]
     result = optimize.minimize(calc_log_likelihood, starting_value, 
                 args=(W, actual_meg, log_omega_det, omega_inv), 
@@ -172,7 +225,15 @@ def maximize_params(starting_value, W, actual_meg, log_omega_det, omega_inv):
                 bounds=bounds)
     return result.x
 
+# TODO: just inherit from the inverted encoding model class and override the cross_validate function
 class BayesianIEM(object):
+    """
+    Bayesian IEM from van Bergen et al., 2015. The difference between this model and the inverted encoding model
+    is the cross_validate function. The model is initialized the same as the original model. However, this model
+    accounts for noise and uses maximum likelihood estimation to predict channel responses.
+
+    Refer to the IEM documentation for more information on the initialization functions.
+    """
     def __init__(self, n_ori_chans):
         self.n_ori_chans = n_ori_chans
         self.chan_center = np.linspace(180 / n_ori_chans, 180, n_ori_chans)
@@ -206,6 +267,13 @@ class BayesianIEM(object):
         return trn_repnum
 
     def cross_validate(self, trnX_cv, trn_cv, trng_cv, trn_repnum):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
         trn_cv_coeffs = np.zeros((len(trng_cv), 2 * trn_cv.shape[1], trn_cv.shape[2]))
         trn_cv_coeffs[:, :trn_cv.shape[1], :] = np.real(trn_cv)
         trn_cv_coeffs[:, trn_cv.shape[1]:, :] = np.imag(trn_cv)
